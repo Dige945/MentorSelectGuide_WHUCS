@@ -19,6 +19,22 @@ const routes = [
       title: '教师列表 - 武汉大学教师评价系统'
     }
   },
+  {
+    path: '/teacher/:id',
+    name: 'TeacherDetail',
+    component: () => import('../views/TeacherDetail.vue'),
+    meta: {
+      title: '教师详情 - 武汉大学教师评价系统'
+    }
+  },
+  {
+    path: '/rankings',
+    name: 'Csranking',
+    component: () => import('../views/Csranking.vue'),
+    meta: {
+      title: 'a'
+    }
+  },
   // 404页面
   {
     path: '/:pathMatch(.*)*',
@@ -43,3 +59,6 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+
+
+

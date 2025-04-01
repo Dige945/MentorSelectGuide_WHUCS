@@ -5,14 +5,14 @@
       <el-header>
         <div class="header-container">
           <div class="logo">
-            <h1>武汉大学计算机学院导师评价推荐系统</h1>
+            <h1>ChooseYourMentor_WHUCS</h1>
           </div>
           <div class="nav-menu">
             <el-menu mode="horizontal" :ellipsis="false" router :default-active="activeMenu">
               <el-menu-item index="/">首页</el-menu-item>
-              <el-menu-item index="/teachers">教师列表</el-menu-item>
-              <el-menu-item index="/courses">课程列表</el-menu-item>
-              <el-menu-item index="/rankings">排行榜</el-menu-item>
+              <el-menu-item index="/teachers">导师列表</el-menu-item>
+              <el-menu-item index="/courses">科研方向</el-menu-item>
+              <el-menu-item index="/rankings">csranking</el-menu-item>
               <el-menu-item index="/about">关于我们</el-menu-item>
             </el-menu>
           </div>

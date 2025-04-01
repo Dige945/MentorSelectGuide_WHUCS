@@ -101,53 +101,53 @@ export default {
         },
         {
           id: 2,
-          name: '叶茫',
-          department: '计算机学院',
-          rating: 4.6,
-          specialty: '计算机视觉、人工智能',
+          name: '李教授',
+          department: '计算机科学系',
+          rating: 4.7,
+          specialty: '操作系统、分布式系统',
           avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
         },
         {
           id: 3,
-          name: '王正',
-          department: '计算机学院',
+          name: '王教授',
+          department: '软件工程系',
           rating: 4.9,
-          specialty: '人工智能，计算机视觉',
+          specialty: '软件工程、项目管理',
           avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
         },
         {
           id: 4,
-          name: '刘教授',
-          department: '计算机学院',
-          rating: 4.7,
-          specialty: '数据库系统、大数据分析',
+          name: '张教授',
+          department: '信息安全系',
+          rating: 4.6,
+          specialty: '网络安全、密码学',
           avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
         }
       ],
       latestReviews: [
         {
           id: 1,
-          teacherName: '张教授',
+          teacherName: '杜博',
           courseName: '人工智能导论',
-          content: '老师讲课生动有趣，能够用简单易懂的方式解释复杂的概念。课程内容丰富，实践机会多。',
+          content: '老师讲课非常生动，能够将复杂的理论讲解得通俗易懂。',
           rating: 5,
-          date: '2023-09-15'
+          date: '2024-03-15'
         },
         {
           id: 2,
           teacherName: '李教授',
-          courseName: '计算机网络',
-          content: '李教授讲课逻辑清晰，重点突出，对网络协议的讲解深入浅出，作业难度适中。',
+          courseName: '操作系统',
+          content: '课程内容充实，实验指导详细，收获很大。',
           rating: 4.5,
-          date: '2023-09-10'
+          date: '2024-03-14'
         },
         {
           id: 3,
           teacherName: '王教授',
           courseName: '软件工程',
-          content: '课程安排合理，项目实践占比大，能够学到实用的软件开发技能和团队协作经验。',
+          content: '理论与实践结合得很好，项目经验分享很有价值。',
           rating: 4.8,
-          date: '2023-09-05'
+          date: '2024-03-13'
         }
       ]
     }
