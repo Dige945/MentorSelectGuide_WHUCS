@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek Chat</title>
+    <style>
+        /* CSS变量定义（主题色、背景渐变等） */
+        :root {
+            --primary-color: #5b8cff; /* 主色调 */
+            --user-bg: linear-gradient(135deg, #5b8cff 0%, #3d6ef7 100%); /* 用户消息背景 */
+            --bot-bg: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%); /* AI消息背景 */
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* 通用阴影 */
+        }
+
+        /* 基础页面样式 */
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); /* 页面背景渐变 */
+        }
+
+        /* 聊天容器主体 */
+        .chat-container {
+            width: 100%;
+            max-width: 800px; /* 最大宽度限制 */
+            height: 90vh; /* 视口高度90% */
+            background: rgba(255, 255, 255, 0.95); /* 半透明白色 */
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px); /* 毛玻璃效果 */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 聊天标题栏 */
+        .chat-header {
+            padding: 24px;
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* 底部阴影 */
+        }
+
+        /* 消息显示区域 */
+        .chat-messages {
+            flex: 1; /* 占据剩余空间 */
+            padding: 20px;
+            overflow-y: auto; /* 垂直滚动 */
+            display: flex;
+            flex-direction: column;
+            gap: 12px; /* 消息间距 */
+        }
+
+        /* 通用消息样式 */
+        .chat-message {
+            max-width: 75%; /* 最大宽度限制 */
+            padding: 16px 20px;
+            border-radius: 20px;
+            line-height: 1.5;
+            animation: messageAppear 0.3s ease-out; /* 入场动画 */
+            position: relative;
+            word-break: break-word; /* 长单词换行 */
+        }
+
+        /* 用户消息特定样式 */
+        .chat-message.user {
+            background: var(--user-bg);
+            color: white;
+            align-self: flex-end; /* 靠右对齐 */
+            border-bottom-right-radius: 4px; /* 右下角锐化 */
+            box-shadow: var(--shadow);
+        }
+
+        /* AI消息特定样式 */
+        .chat-message.bot {
+            background: var(--bot-bg);
+            color: #2d3748;
+            align-self: flex-start; /* 靠左对齐 */
+            border-bottom-left-radius: 4px; /* 左下角锐化 */
+            box-shadow: var(--shadow);
+        }
+
+        /* 输入区域样式 */
+        .chat-input {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-top: 1px solid rgba(0, 0, 0, 0.05); /* 顶部边框 */
+            display: flex;
+            gap: 12px; /* 元素间距 */
+        }
+
+        /* 输入框样式 */
+        .chat-input input {
+            flex: 1; /* 占据剩余空间 */
+            padding: 14px 20px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        /* 输入框聚焦状态 */
+        .chat-input input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.2); /* 聚焦光环 */
+        }
+
+        /* 发送按钮样式 */
+        .chat-input button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 16px;
+            background: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px; /* 图标与文字间距 */
+        }
+
+        /* 按钮悬停状态 */
+        .chat-input button:hover {
+            background: #406cff;
+            transform: translateY(-1px); /* 轻微上浮 */
+        }
+
+        /* 按钮禁用状态 */
+        .chat-input button:disabled {
+            background: #c2d1ff;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 按钮内SVG图标 */
+        .chat-input button svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor; /* 继承文字颜色 */
+        }
+
+        /* 消息入场动画 */
+        @keyframes messageAppear {
+            from {
+                opacity: 0;
+                transform: translateY(10px); /* 从下方10px进入 */
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 输入指示器容器 */
+        .typing-indicator {
+            display: inline-flex;
+            gap: 6px;
+            padding: 12px 20px;
+            background: var(--bot-bg);
+            border-radius: 20px;
+            align-self: flex-start;
+        }
+
+        /* 输入指示点样式 */
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out; /* 跳动动画 */
+        }
+
+        /* 第二个点的动画延迟 */
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        /* 第三个点的动画延迟 */
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        /* 输入指示点动画 */
+        @keyframes typing {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-4px); /* 向上跳动 */
+            }
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 640px) {
+            body {
+                padding: 10px;
+            }
+            .chat-container {
+                height: 95vh;
+                border-radius: 16px;
+            }
+            .chat-message {
+                max-width: 85%; /* 移动端消息更宽 */
+            }
+        }
+    </style>
+</head>
+
+<body>
+<!-- 聊天主容器 -->
+<div class="chat-container">
+    <!-- 标题区域 -->
+    <div class="chat-header">
+        <h1>大米集团</h1>
+    </div>
+
+    <!-- 消息显示区域 -->
+    <div class="chat-messages" id="chatMessages"></div>
+
+    <!-- 输入区域 -->
+    <div class="chat-input">
+        <input type="text" id="questionInput" placeholder="输入消息..." onkeydown="handleKeyDown(event)">
+        <button id="sendButton" disabled>
+            <svg viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+            发送
+        </button>
+    </div>
+</div>
+
+<script>
+    // DOM元素引用
+    const questionInput = document.getElementById('questionInput');
+    const sendButton = document.getElementById('sendButton');
+    const chatMessages = document.getElementById('chatMessages');
+    let isBotResponding = false; // AI响应状态标志
+
+    // 输入验证：有内容时才启用发送按钮
+    questionInput.addEventListener('input', () => {
+        sendButton.disabled = questionInput.value.trim().length === 0;
+    });
+
+    // 回车键发送处理
+    function handleKeyDown(e) {
+        if (e.key === 'Enter' && !sendButton.disabled && !isBotResponding) {
+            sendButton.click();
+        }
+    }
+
+    // 当前正在更新的AI消息引用
+    let currentBotMessage = null;
+
+    // 处理AI的流式响应
+    async function handleBotResponse(response) {
+        const reader = response.body.getReader(); // 获取可读流
+        const decoder = new TextDecoder(); // 文本解码器
+        let buffer = ''; // 数据缓冲区
+
+        // 创建初始空消息容器
+        currentBotMessage = displayMessage('bot', '');
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    // 处理最后剩余的数据
+                    if (buffer) processLine(buffer);
+                    break;
+                }
+
+                // 解码并缓冲数据
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+
+                // 保留未完成的行在缓冲区
+                buffer = lines.pop() || '';
+
+                // 处理每行数据
+                lines.forEach(line => {
+                    if (line.startsWith('data:')) {
+                        const data = line.replace(/^data:\s*/g, '').trim();
+                        if (data === '[DONE]') return; // 结束标记
+                        currentBotMessage.textContent += data; // 追加内容
+                    }
+                });
+
+                // 自动滚动到底部
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        } finally {
+            currentBotMessage = null; // 重置引用
+        }
+    }
+
+    // 发送消息处理
+    sendButton.addEventListener('click', async () => {
+        if (isBotResponding) return; // 防止重复提交
+
+        const question = questionInput.value.trim();
+        if (!question) return;
+
+        // 清空输入框并禁用按钮
+        questionInput.value = '';
+        sendButton.disabled = true;
+        isBotResponding = true;
+
+        // 显示用户消息
+        displayMessage('user', question);
+
+        try {
+            // 显示"正在输入"指示器
+            const typingIndicator = createTypingIndicator();
+
+            // 发送请求到后端
+            const response = await fetch('/deepSeek/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream' // 接受SSE流
+                },
+                body: JSON.stringify({ question }), // 序列化请求体
+            });
+
+            // 移除指示器并处理响应
+            typingIndicator.remove();
+            await handleBotResponse(response);
+
+        } catch (error) {
+            console.error('请求失败:', error);
+            displayMessage('bot', '暂时无法处理您的请求，请稍后再试');
+        } finally {
+            isBotResponding = false;
+            questionInput.focus(); // 重新聚焦输入框
+        }
+    });
+
+    // 创建并显示消息元素
+    function displayMessage(sender, content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${sender}`;
+        messageDiv.textContent = content;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight; // 自动滚动
+        return messageDiv;
+    }
+
+    // 创建"正在输入"指示器
+    function createTypingIndicator() {
+        const container = document.createElement('div');
+        container.className = 'typing-indicator';
+        container.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+        chatMessages.appendChild(container);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return container;
+    }
+</script>
+</body>
+</html>
