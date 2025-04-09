@@ -72,6 +72,22 @@ const routes = [
       title: '你的专属寻找导师AI助手'
     }
   },
+  {
+    path: '/login',
+    name: 'ALogin',
+    component: () => import('../views/Login.vue'), // 确认组件路径正确
+    meta: {
+      title: '用户登录',
+    }
+  },
+  {
+    path: '/register',
+    name: 'ARegister',
+    component: () => import('../views/Regiser.vue'), // 确认组件路径正确
+    meta: {
+      title: '用户注册',
+    }
+  },
   // 404页面
   {
     path: '/:pathMatch(.*)*',

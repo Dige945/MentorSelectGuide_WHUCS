@@ -18,8 +18,8 @@
             </el-menu>
           </div>
           <div class="user-actions">
-            <el-button type="primary" plain>登录</el-button>
-            <el-button type="success">注册</el-button>
+            <el-button type="primary" @click="handleLogin">登录</el-button>
+            <el-button type="success" @click="handleRegister">注册</el-button>
           </div>
         </div>
       </el-header>
@@ -75,6 +75,14 @@ export default {
   computed: {
     activeMenu() {
       return this.$route.path
+    }
+  },
+  methods: {
+    handleLogin() {
+      this.$router.push('/login')
+    },
+    handleRegister() {
+      this.$router.push('/register')
     }
   }
 }
