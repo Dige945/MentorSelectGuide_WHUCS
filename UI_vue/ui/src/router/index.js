@@ -64,6 +64,14 @@ const routes = [
       title: '你的专属寻找导师AI助手'
     }
   },
+  {
+    path:'/AIRecommend',
+    name: 'AIRecommend',
+    component: () => import('../views/AIRecommend.vue'),
+    meta: {
+      title: '你的专属寻找导师AI助手'
+    }
+  },
   // 404页面
   {
     path: '/:pathMatch(.*)*',

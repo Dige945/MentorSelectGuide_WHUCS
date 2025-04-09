@@ -13,6 +13,7 @@
               <el-menu-item index="/teachers">导师列表</el-menu-item>
               <el-menu-item index="/research">科研方向</el-menu-item>
               <el-menu-item index="/rankings">csranking</el-menu-item>
+              <el-menu-item index="/AIRecommend">智能推荐</el-menu-item>
               <el-menu-item index="/about">关于我们</el-menu-item>
             </el-menu>
           </div>

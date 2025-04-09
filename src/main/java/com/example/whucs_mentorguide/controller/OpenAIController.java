@@ -194,4 +194,135 @@ public class OpenAIController {
 
         return emitter;
     }
+
+    @PostMapping(value = "/recommend", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter recommend(@RequestBody Map<String, Object> request) {
+        String userId = "123";
+        SseEmitter emitter = new SseEmitter(-1L);
+
+        executorService.execute(() -> {
+            try {
+                log.info("开始处理推荐请求，请求内容: {}", request);
+
+                List<Map<String, String>> messages = sessionHistory.getOrDefault(userId, new ArrayList<>());
+
+                // 构造系统提示词
+                Map<String, String> systemMessage = new HashMap<>();
+                systemMessage.put("role", "system");
+                systemMessage.put("content", buildSystemPrompt(request));
+
+                // 构造用户消息
+                Map<String, String> userMessage = new HashMap<>();
+                userMessage.put("role", "user");
+                userMessage.put("content", buildUserPrompt(request));
+
+                messages.add(systemMessage);
+                messages.add(userMessage);
+
+                try (CloseableHttpClient client = HttpClients.createDefault()) {
+                    HttpPost httpPost = new HttpPost(API_URL);
+                    httpPost.setHeader("Content-Type", "application/json");
+                    httpPost.setHeader("Authorization", "Bearer " + API_KEY);
+
+                    Map<String, Object> requestMap = new HashMap<>();
+                    requestMap.put("model", "deepseek-chat");
+                    requestMap.put("messages", messages);
+                    requestMap.put("stream", true);
+
+                    String requestBody = objectMapper.writeValueAsString(requestMap);
+                    httpPost.setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
+
+                    try (CloseableHttpResponse response = client.execute(httpPost);
+                         BufferedReader reader = new BufferedReader(
+                                 new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))) {
+
+                        StringBuilder aiResponse = new StringBuilder();
+                        String line;
+
+                        while ((line = reader.readLine()) != null) {
+                            if (line.startsWith("data: ")) {
+                                String jsonData = line.substring(6);
+                                if ("[DONE]".equals(jsonData)) {
+                                    break;
+                                }
+
+                                JsonNode node = objectMapper.readTree(jsonData);
+                                String content = node.path("choices")
+                                        .path(0)
+                                        .path("delta")
+                                        .path("content")
+                                        .asText("");
+
+                                if (!content.isEmpty()) {
+                                    emitter.send(content);
+                                    aiResponse.append(content);
+                                }
+                            }
+                        }
+
+                        Map<String, String> aiMessage = new HashMap<>();
+                        aiMessage.put("role", "assistant");
+                        aiMessage.put("content", aiResponse.toString());
+
+                        messages.add(aiMessage);
+                        sessionHistory.put(userId, messages);
+
+                        log.info("推荐请求处理完成");
+                        emitter.complete();
+                    }
+                } catch (Exception e) {
+                    log.error("DeepSeek API请求处理异常", e);
+                    emitter.completeWithError(e);
+                }
+            } catch (Exception e) {
+                log.error("请求处理流程异常", e);
+                emitter.completeWithError(e);
+            }
+        });
+
+        return emitter;
+    }
+
+    private String buildSystemPrompt(Map<String, Object> request) {
+        return "你是一个专业的导师推荐助手。根据学生的偏好和教师信息，推荐最适合的导师。" +
+               "请分析教师的科研方向、职称、院系等信息，给出详细的推荐理由。";
+    }
+
+    private String buildUserPrompt(Map<String, Object> request) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("请根据以下信息推荐合适的导师：\n\n");
+
+        // 添加标签信息
+        List<String> tags = (List<String>) request.get("tags");
+        if (tags != null && !tags.isEmpty()) {
+            prompt.append("期望的导师类型：\n");
+            for (String tag : tags) {
+                prompt.append("- ").append(tag).append("\n");
+            }
+            prompt.append("\n");
+        }
+
+        // 添加其他偏好
+        String preferences = (String) request.get("preferences");
+        if (preferences != null && !preferences.isEmpty()) {
+            prompt.append("其他偏好：\n").append(preferences).append("\n\n");
+        }
+
+        // 添加教师信息
+        List<Map<String, Object>> teachers = (List<Map<String, Object>>) request.get("teachers");
+        if (teachers != null && !teachers.isEmpty()) {
+            prompt.append("可选教师信息：\n");
+            for (Map<String, Object> teacher : teachers) {
+                prompt.append("教师：").append(teacher.get("name")).append("\n");
+                prompt.append("职称：").append(teacher.get("title")).append("\n");
+                prompt.append("院系：").append(teacher.get("department")).append("\n");
+                prompt.append("研究方向：").append(teacher.get("research_area")).append("\n");
+                prompt.append("个人主页：").append(teacher.get("profile_url")).append("\n");
+                prompt.append("排名：").append(teacher.get("rank")).append("\n\n");
+            }
+        }
+
+        prompt.append("请根据以上信息，推荐最适合的导师，并详细说明推荐理由。");
+        return prompt.toString();
+    }
 }
