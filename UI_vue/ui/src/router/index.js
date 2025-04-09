@@ -1,5 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
+import Teachers from '../views/Teachers.vue'
+import TeacherDetail from '../views/TeacherDetail.vue'
+import ResearchDirection from '../views/ResearchDirection.vue'
+import AreaDetail from '../views/AreaDetail.vue'
+import TaskDetail from '../views/TaskDetail.vue'
+import NotFound from '../views/NotFound.vue'
 
 const routes = [
   {
@@ -7,32 +13,47 @@ const routes = [
     name: 'Home',
     component: Home,
     meta: {
-      title: '首页 - 武汉大学教师评价系统'
+      title: '首页'
     }
   },
   {
     path: '/teachers',
     name: 'Teachers',
-    // 使用懒加载，减少首屏加载时间
-    component: () => import('../views/Teachers.vue'),
+    component: Teachers,
     meta: {
-      title: '教师列表 - 武汉大学教师评价系统'
+      title: '教师列表'
     }
   },
   {
-    path: '/teacher/:id',
+    path: '/teachers/:id',
     name: 'TeacherDetail',
-    component: () => import('../views/TeacherDetail.vue'),
+    component: TeacherDetail,
     meta: {
-      title: '教师详情 - 武汉大学教师评价系统'
+      title: '教师详情'
     }
   },
   {
-    path: '/rankings',
-    name: 'Csranking',
-    component: () => import('../views/Csranking.vue'),
+    path: '/research',
+    name: 'ResearchDirection',
+    component: ResearchDirection,
     meta: {
-      title: 'a'
+      title: '研究方向'
+    }
+  },
+  {
+    path: '/area/:area',
+    name: 'AreaDetail',
+    component: AreaDetail,
+    meta: {
+      title: '研究领域详情'
+    }
+  },
+  {
+    path: '/tasks/:task',
+    name: 'TaskDetail',
+    component: TaskDetail,
+    meta: {
+      title: '研究方向详情'
     }
   },
   {
@@ -47,26 +68,26 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('../views/NotFound.vue'),
+    component: NotFound,
     meta: {
-      title: '页面未找到 - 武汉大学教师评价系统'
+      title: '404 - 页面未找到'
     }
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(process.env.BASE_URL),
   routes
 })
 
-// 路由导航守卫，设置页面标题
+// 设置页面标题
 router.beforeEach((to, from, next) => {
-  // 设置页面标题
   document.title = to.meta.title || '武汉大学教师评价系统'
   next()
 })
 
 export default router
+
 
 
 
