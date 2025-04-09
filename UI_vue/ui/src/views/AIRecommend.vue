@@ -34,7 +34,7 @@ export default {
       try {
         console.log('开始加载教师数据...')
         
-        request.get("http://localhost:9090/api/teachers").then(res => {
+        request.get("teachers/all").then(res => {
           console.log('API响应:', res)
           if (res.code === 200) {
             this.teachers = res.data
