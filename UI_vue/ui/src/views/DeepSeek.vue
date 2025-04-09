@@ -42,7 +42,6 @@
 </template>
 
 <script>
-import axios from "axios";
 export default {
   name: 'ChatInterface',
   data() {
@@ -102,11 +101,15 @@ export default {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let isStreaming = true
 
       try {
-        while (true) {
+        while (isStreaming) {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done) {
+            isStreaming = false
+            break
+          }
 
           buffer += decoder.decode(value, { stream: true })
           const lines = buffer.split('\n')
