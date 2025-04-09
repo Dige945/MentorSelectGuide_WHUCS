@@ -3,7 +3,7 @@ package com.example.whucs_mentorguide.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-@TableName("users")
+@TableName("teachers")
 @Data
 public class Teacher {
 
