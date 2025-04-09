@@ -57,6 +57,15 @@ const routes = [
     }
   },
   {
+    path:'/deepseek',
+    name: 'Deepseek',
+    component: () => import('../views/DeepSeek.vue'),
+    meta: {
+      title: '你的专属寻找导师AI助手'
+    }
+  },
+  // 404页面
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: NotFound,
