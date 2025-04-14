@@ -1,32 +1,46 @@
 <script>
-import request from "@/utils/request";
+import { mapActions } from 'vuex'
+import request from '@/utils/request'
+
 export default {
   name: "ALogin",
-  data(){
+  data() {
     return {
-      form:{},
+      form: {
+        username: '',
+        password: ''
+      },
       loading: false
     }
   },
-  methods:{
-    login(){
-      this.loading = true;
-      request.post("/user/login",this.form).then(res=>{
-        if(res.code === '0'){
-          this.$message({
-            type: 'success',
-            message: '登录成功'
-          })
-          this.$router.push('/')
-        }else{
-          this.$message({
-            type: 'error',
-            message: res.msg
-          });
+  methods: {
+    ...mapActions(['login']),
+    async handleLogin() {
+      if (!this.form.username || !this.form.password) {
+        this.$message.warning('请输入用户名和密码')
+        return
+      }
+      
+      this.loading = true
+      try {
+        const res = await request.post('/user/login', this.form)
+        if (res.code === '0') {
+          // 直接设置用户信息到store
+          this.$store.commit('SET_USER', res.data)
+          this.$store.commit('SET_TOKEN', res.data.token)
+          localStorage.setItem('token', res.data.token)
+          
+          this.$message.success('登录成功')
+          const redirect = this.$route.query.redirect || '/'
+          this.$router.push(redirect)
+        } else {
+          this.$message.error(res.msg || '用户名或密码错误')
         }
-      }).finally(() => {
-        this.loading = false;
-      })
+      } catch (error) {
+        this.$message.error('登录失败：' + error.message)
+      } finally {
+        this.loading = false
+      }
     },
     goToRegister() {
       this.$router.push('/register')
@@ -69,7 +83,7 @@ export default {
               type="primary"
               class="login-button"
               :loading="loading"
-              @click="login"
+              @click="handleLogin"
           >
             登录
           </el-button>

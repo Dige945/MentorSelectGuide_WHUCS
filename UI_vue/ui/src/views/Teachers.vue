@@ -148,7 +148,7 @@ export default {
   name: 'TeachersView',
   data() {
     return {
-      searchQuery: '',
+      searchQuery: this.$route.query.search || '',
       selectedDepartment: '',
       sortBy: 'rating-desc',
       currentPage: 1,
@@ -356,6 +356,15 @@ export default {
       } catch (error) {
         this.$message.error('评价提交失败：' + error.message);
       }
+    }
+  },
+  watch: {
+    '$route.query.search': {
+      handler(newVal) {
+        this.searchQuery = newVal || ''
+        this.handleSearch()
+      },
+      immediate: true
     }
   }
 }

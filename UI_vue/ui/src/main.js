@@ -1,21 +1,28 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import router from './router'
+import store from './store'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
-import router from './router'
 
 const app = createApp(App)
-
-// 使用ElementPlus
-app.use(ElementPlus)
-
-// 使用路由
-app.use(router)
 
 // 注册所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
+// 初始化时检查登录状态
+store.dispatch('checkLogin').then(isLoggedIn => {
+  if (isLoggedIn) {
+    console.log('用户已登录')
+  } else {
+    console.log('用户未登录')
+  }
+})
+
+app.use(router)
+app.use(store)
+app.use(ElementPlus)
 app.mount('#app')

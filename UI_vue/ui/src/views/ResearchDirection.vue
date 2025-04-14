@@ -60,6 +60,7 @@ export default {
   name: 'ResearchDirection',
   data() {
     return {
+      searchQuery: this.$route.query.search || '',
       researchAreas: [
         {
           id: 'cv',
@@ -141,7 +142,39 @@ export default {
       ]
     }
   },
+  watch: {
+    '$route.query.search': {
+      handler(newVal) {
+        this.searchQuery = newVal || ''
+        this.handleSearch()
+      },
+      immediate: true
+    }
+  },
   methods: {
+    handleSearch() {
+      if (this.searchQuery) {
+        // 遍历所有研究领域和方向，找到匹配的项
+        for (const area of this.researchAreas) {
+          const matchingDirections = area.directions.filter(direction => 
+            direction.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+            direction.enName.toLowerCase().includes(this.searchQuery.toLowerCase())
+          )
+          
+          if (matchingDirections.length > 0) {
+            // 如果找到匹配的方向，跳转到对应的研究领域页面
+            this.$router.push({
+              path: `/area/${area.id}`,
+              query: { search: this.searchQuery }
+            })
+            return
+          }
+        }
+        
+        // 如果没有找到匹配的方向，显示提示信息
+        this.$message.info('未找到相关研究方向')
+      }
+    },
     navigateToArea(areaId) {
       this.$router.push(`/area/${areaId}`)
     },

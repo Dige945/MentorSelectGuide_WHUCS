@@ -6,6 +6,11 @@ import ResearchDirection from '../views/ResearchDirection.vue'
 import AreaDetail from '../views/AreaDetail.vue'
 import TaskDetail from '../views/TaskDetail.vue'
 import NotFound from '../views/NotFound.vue'
+import Login from '../views/Login.vue'
+import Register from '../views/Register.vue'
+import Profile from '../views/Profile.vue'
+import AIRecommend from '../views/AIRecommend.vue'
+import store from '../store'
 
 const routes = [
   {
@@ -25,7 +30,7 @@ const routes = [
     }
   },
   {
-    path: '/teachers/:id',
+    path: '/teacher/:id',
     name: 'TeacherDetail',
     component: TeacherDetail,
     meta: {
@@ -41,60 +46,61 @@ const routes = [
     }
   },
   {
-    path: '/area/:area',
+    path: '/area/:id',
     name: 'AreaDetail',
     component: AreaDetail,
     meta: {
-      title: '研究领域详情'
+      title: '领域详情'
     }
   },
   {
-    path: '/tasks/:task',
+    path: '/task-detail',
     name: 'TaskDetail',
     component: TaskDetail,
     meta: {
-      title: '研究方向详情'
+      title: '任务详情'
     }
   },
   {
-    path:'/deepseek',
-    name: 'Deepseek',
-    component: () => import('../views/DeepSeek.vue'),
-    meta: {
-      title: '你的专属寻找导师AI助手'
-    }
-  },
-  {
-    path:'/AIRecommend',
+    path: '/AIRecommend',
     name: 'AIRecommend',
-    component: () => import('../views/AIRecommend.vue'),
+    component: AIRecommend,
     meta: {
-      title: '你的专属寻找导师AI助手'
+      title: 'AI推荐',
+      requiresAuth: true
     }
   },
   {
     path: '/login',
-    name: 'ALogin',
-    component: () => import('../views/Login.vue'), // 确认组件路径正确
+    name: 'Login',
+    component: Login,
     meta: {
-      title: '用户登录',
+      title: '登录'
     }
   },
   {
     path: '/register',
-    name: 'ARegister',
-    component: () => import('../views/Regiser.vue'), // 确认组件路径正确
+    name: 'Register',
+    component: Register,
     meta: {
-      title: '用户注册',
+      title: '注册'
     }
   },
-  // 404页面
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
+    meta: {
+      title: '个人信息',
+      requiresAuth: true
+    }
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: NotFound,
     meta: {
-      title: '404 - 页面未找到'
+      title: '404'
     }
   }
 ]
@@ -105,8 +111,21 @@ const router = createRouter({
 })
 
 // 设置页面标题
-router.beforeEach((to, from, next) => {
-  document.title = to.meta.title || '武汉大学教师评价系统'
+router.beforeEach(async (to, from, next) => {
+  document.title = to.meta.title ? `${to.meta.title} - 武汉大学计算机学院导师选择指南` : '武汉大学计算机学院导师选择指南'
+  
+  // 检查是否需要登录
+  if (to.meta.requiresAuth) {
+    const isLoggedIn = await store.dispatch('checkLogin')
+    if (!isLoggedIn) {
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath }
+      })
+      return
+    }
+  }
+  
   next()
 })
 
