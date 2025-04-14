@@ -42,7 +42,7 @@
       
       <!-- 主要内容区域 -->
       <el-main>
-        <slot></slot>
+        <router-view></router-view>
       </el-main>
       
       <!-- 底部栏 -->

@@ -10,6 +10,7 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
 import AIRecommend from '../views/AIRecommend.vue'
+import About from '../views/About.vue'
 import store from '../store'
 
 const routes = [
@@ -87,6 +88,15 @@ const routes = [
     }
   },
   {
+    path: '/about',
+    name: 'About',
+    component: About,
+    meta: {
+      title: '关于我们'
+    }
+  },
+
+  {
     path: '/profile',
     name: 'Profile',
     component: Profile,
@@ -110,10 +120,11 @@ const router = createRouter({
   routes
 })
 
-// 设置页面标题
+// 路由守卫
 router.beforeEach(async (to, from, next) => {
+  // 设置页面标题
   document.title = to.meta.title ? `${to.meta.title} - 武汉大学计算机学院导师选择指南` : '武汉大学计算机学院导师选择指南'
-  
+
   // 检查是否需要登录
   if (to.meta.requiresAuth) {
     const isLoggedIn = await store.dispatch('checkLogin')
@@ -125,7 +136,7 @@ router.beforeEach(async (to, from, next) => {
       return
     }
   }
-  
+
   next()
 })
 
