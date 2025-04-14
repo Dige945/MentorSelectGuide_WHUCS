@@ -39,40 +39,40 @@
     
     <div class="teachers-list">
       <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="teacher in filteredTeachers" :key="teacher.id">
+        <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="teacher in paginatedTeachers" :key="teacher.id">
           <el-card shadow="hover" class="teacher-card">
-            <div class="teacher-header">
-              <el-avatar :size="80" :src="teacher.avatar"></el-avatar>
-              <div class="teacher-rating">
-                <el-rate
-                  v-model="teacher.rating"
-                  disabled
-                  show-score
-                  text-color="#ff9900"
-                  score-template="{value}"
-                />
-                <span class="review-count">{{ teacher.reviewCount }}条评价</span>
-              </div>
+          <div class="teacher-header">
+            <el-avatar :size="80" :src="teacher.avatar || '默认头像URL'"></el-avatar>
+            <div class="teacher-rating">
+              <el-rate
+                v-model="teacher.rating"
+                disabled
+                show-score
+                text-color="#ff9900"
+                score-template="{value}"
+              />
+              <span class="review-count">{{ teacher.reviewCount || 0 }}条评价</span>
             </div>
-            <div class="teacher-body">
-              <h3>{{ teacher.name }}</h3>
-              <p class="teacher-department">{{ teacher.department }}</p>
-              <p class="teacher-title">{{ teacher.title }}</p>
-              <div class="teacher-tags">
-                <el-tag v-for="tag in teacher.tags" :key="tag" size="small" type="info" effect="plain" class="teacher-tag">
-                  {{ tag }}
-                </el-tag>
-              </div>
-              <div class="teacher-courses">
-                <h4>主讲课程:</h4>
-                <p>{{ teacher.courses.join('、') }}</p>
-              </div>
+          </div>
+          <div class="teacher-body">
+            <h3>{{ teacher.name || '未知教师' }}</h3>
+            <p class="teacher-department">{{ teacher.department || '未知专业' }}</p>
+            <p class="teacher-title">{{ teacher.title || '未知职称' }}</p>
+            <div class="teacher-tags">
+              <el-tag v-for="tag in teacher.tags || []" :key="tag" size="small" type="info" effect="plain" class="teacher-tag">
+                {{ tag }}
+              </el-tag>
             </div>
-            <div class="teacher-footer">
-              <el-button type="primary" size="small" @click="viewTeacherDetail(teacher.id)">查看详情</el-button>
-              <el-button type="success" size="small" @click="showReviewDialog(teacher)">写评价</el-button>
+            <div class="teacher-courses">
+              <h4>主讲课程:</h4>
+              <p>{{ teacher.courses?.join('、') || '暂无课程信息' }}</p>
             </div>
-          </el-card>
+          </div>
+        </el-card>
+          <div class="teacher-footer">
+            <el-button type="text" @click="viewTeacherDetail(teacher.id)">查看详情</el-button>
+            <el-button type="primary" @click="showReviewDialog(teacher)">评价</el-button>
+          </div>
         </el-col>
       </el-row>
     </div>
@@ -83,7 +83,7 @@
         v-model:page-size="pageSize"
         :page-sizes="[12, 24, 36, 48]"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="totalTeachers"
+        :total="filteredTeachers.length"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
       />
@@ -144,6 +144,8 @@
 </template>
 
 <script>
+import axios from "axios";
+
 export default {
   name: 'TeachersView',
   data() {
@@ -154,91 +156,8 @@ export default {
       currentPage: 1,
       pageSize: 12,
       totalTeachers: 100,
-      departments: [
-        { value: '计算机科学与技术', label: '计算机科学与技术' },
-        { value: '软件工程', label: '软件工程' },
-        { value: '人工智能', label: '人工智能' },
-      ],
-      teachers: [
-        {
-          id: 1,
-          name: '张教授',
-          department: '人工智能',
-          title: '教授',
-          rating: 4.8,
-          reviewCount: 256,
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-          tags: ['教学认真', '有耐心', '授课生动'],
-          courses: ['数据结构', '算法分析', '人工智能']
-        },
-        {
-          id: 2,
-          name: '李教授',
-          department: '软件工程',
-          title: '教授',
-          rating: 4.6,
-          reviewCount: 189,
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-          tags: ['思路清晰', '重点突出', '答疑及时'],
-          courses: ['计算机网络', '信息安全', '密码学']
-        },
-        {
-          id: 3,
-          name: '王教授',
-          department: '计算机科学与技术',
-          title: '教授',
-          rating: 4.9,
-          reviewCount: 320,
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-          tags: ['优秀教师', '讲解透彻', '作业适中'],
-          courses: ['高等数学', '线性代数', '概率论']
-        },
-        {
-          id: 4,
-          name: '刘教授',
-          department: '人工智能',
-          title: '副教授',
-          rating: 4.7,
-          reviewCount: 175,
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-          tags: ['专业知识扎实', '循循善诱', '板书工整'],
-          courses: ['数据库系统', '大数据分析', '数据挖掘']
-        },
-        {
-          id: 5,
-          name: '陈教授',
-          department: '软件工程',
-          title: '教授',
-          rating: 4.5,
-          reviewCount: 142,
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-          tags: ['实验指导详细', '理论联系实际', '幽默风趣'],
-          courses: ['大学物理', '量子力学', '光学']
-        },
-        {
-          id: 6,
-          name: '赵教授',
-          department: '软件工程',
-          title: '教授',
-          rating: 4.4,
-          reviewCount: 162,
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-          tags: ['实践经验丰富', '案例丰富', '关心学生'],
-          courses: ['信号处理', '通信原理', '电路分析']
-        },
-        {
-          id: 7,
-          name: '孙教授',
-          department: '人工智能',
-          title: '教授',
-          rating: 4.8,
-          reviewCount: 198,
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-          tags: ['思维活跃', '鼓励创新', '善于引导'],
-          courses: ['经济学原理', '管理学', '市场营销']
-        },
-
-      ],
+      departments: [],
+      teachers: [],
       isCrawling: false,
       reviewDialogVisible: false,
       currentTeacher: null,
@@ -264,38 +183,80 @@ export default {
     }
   },
   computed: {
+    paginatedTeachers() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      const end = start + this.pageSize;
+      const result = this.filteredTeachers.slice(start, end);
+      
+      console.log('Paginated Teachers:', result); // 调试日志
+      return result;
+    },
     filteredTeachers() {
-      let result = [...this.teachers]
+      let result = [...this.teachers];
       
       // 按学院筛选
       if (this.selectedDepartment) {
-        result = result.filter(teacher => teacher.department === this.selectedDepartment)
+        result = result.filter(teacher => teacher.department === this.selectedDepartment);
       }
       
       // 搜索筛选
       if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase()
+        const query = this.searchQuery.toLowerCase();
         result = result.filter(teacher => 
           teacher.name.toLowerCase().includes(query) || 
           teacher.courses.some(course => course.toLowerCase().includes(query))
-        )
+        );
       }
       
       // 排序
       if (this.sortBy === 'rating-desc') {
-        result.sort((a, b) => b.rating - a.rating)
+        result.sort((a, b) => b.rating - a.rating);
       } else if (this.sortBy === 'rating-asc') {
-        result.sort((a, b) => a.rating - b.rating)
+        result.sort((a, b) => a.rating - b.rating);
       } else if (this.sortBy === 'reviews-desc') {
-        result.sort((a, b) => b.reviewCount - a.reviewCount)
+        result.sort((a, b) => b.reviewCount - a.reviewCount);
       } else if (this.sortBy === 'reviews-asc') {
-        result.sort((a, b) => a.reviewCount - b.reviewCount)
+        result.sort((a, b) => a.reviewCount - b.reviewCount);
       }
       
-      return result
+      console.log('Filtered Teachers:', result); // 调试日志
+      return result;
     }
   },
+  created() {
+    this.fetchTeachers();
+  },
   methods: {
+    async fetchTeachers() {
+      try {
+        const response = await axios.get('/api/teachers/all');
+        console.log('教师数据:', response.data); // 调试日志
+        if (response.data.code === '0') {
+          console.log('111');
+          this.teachers = response.data.data.map(teacher => ({
+            id: teacher.id,
+            name: teacher.name,
+            department: teacher.department,
+            title: teacher.title,
+            // 以下字段根据后端实际情况调整，这里添加默认值
+            rating: teacher.rating || 4.5,
+            reviewCount: teacher.reviewCount || 0,
+            avatar: teacher.avatar || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
+            tags: teacher.tags || [],
+            courses: teacher.courses || []
+          }));
+          console.log('教师数据:', this.teachers); // 调试日志
+          // 动态生成院系筛选选项
+          const departments = [...new Set(this.teachers.map(t => t.department))];
+          this.departments = departments.map(d => ({ value: d, label: d }));
+
+          this.totalTeachers = this.teachers.length;
+        }
+      } catch (error) {
+        console.error('获取教师数据失败:', error);
+        this.$message.error('数据加载失败');
+      }
+    },
     handleSearch() {
       // 在实际应用中，这里可能需要从后端获取数据
       console.log('Searching with:', {
