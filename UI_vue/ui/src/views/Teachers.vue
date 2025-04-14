@@ -39,42 +39,34 @@
     
     <div class="teachers-list">
       <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="teacher in paginatedTeachers" :key="teacher.id">
-          <el-card shadow="hover" class="teacher-card">
-          <div class="teacher-header">
-            <el-avatar :size="80" :src="teacher.avatar || '默认头像URL'"></el-avatar>
-            <div class="teacher-rating">
-              <el-rate
-                v-model="teacher.rating"
-                disabled
-                show-score
-                text-color="#ff9900"
-                score-template="{value}"
-              />
-              <span class="review-count">{{ teacher.reviewCount || 0 }}条评价</span>
-            </div>
-          </div>
-          <div class="teacher-body">
-            <h3>{{ teacher.name || '未知教师' }}</h3>
-            <p class="teacher-department">{{ teacher.department || '未知专业' }}</p>
-            <p class="teacher-title">{{ teacher.title || '未知职称' }}</p>
-            <div class="teacher-tags">
-              <el-tag v-for="tag in teacher.tags || []" :key="tag" size="small" type="info" effect="plain" class="teacher-tag">
-                {{ tag }}
-              </el-tag>
-            </div>
-            <div class="teacher-courses">
-              <h4>主讲课程:</h4>
-              <p>{{ teacher.courses?.join('、') || '暂无课程信息' }}</p>
-            </div>
-          </div>
-        </el-card>
-          <div class="teacher-footer">
-            <el-button type="text" @click="viewTeacherDetail(teacher.id)">查看详情</el-button>
-            <el-button type="primary" @click="showReviewDialog(teacher)">评价</el-button>
-          </div>
-        </el-col>
-      </el-row>
+  <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="teacher in paginatedTeachers" :key="teacher.id">
+    <el-card shadow="hover" class="teacher-card">
+      <div class="teacher-header">
+        <el-avatar :size="80" :src="teacher.avatar || '默认头像URL'"></el-avatar>
+      </div>
+      <div class="teacher-body">
+        <h3>{{ teacher.name || '未知教师' }}</h3>
+        <p class="teacher-department">{{ teacher.department || '未知专业' }}</p>
+        <p class="teacher-title">{{ teacher.title || '未知职称' }}</p>
+        <p class="teacher-recommendations">推荐人数: {{ teacher.recommendations || 0 }}</p>
+        <div class="teacher-research">
+          <h4>主要研究方向:</h4>
+          <p>{{ teacher.researchAreas || '暂无研究方向信息' }}</p>
+        </div>
+        <div class="teacher-tags">
+          <el-tag v-for="tag in teacher.tags || []" :key="tag" size="small" type="info" effect="plain" class="teacher-tag">
+            {{ tag }}
+          </el-tag>
+        </div>
+      </div>
+      <div class="teacher-footer">
+      <el-button type="text" @click="viewTeacherDetail(teacher.id)">查看详情</el-button>
+      <el-button type="primary" @click="showReviewDialog(teacher)">评价</el-button>
+    </div>
+    </el-card>
+    
+  </el-col>
+</el-row>
     </div>
     
     <div class="pagination-container">
@@ -232,18 +224,15 @@ export default {
         const response = await axios.get('/api/teachers/all');
         console.log('教师数据:', response.data); // 调试日志
         if (response.data.code === '0') {
-          console.log('111');
           this.teachers = response.data.data.map(teacher => ({
             id: teacher.id,
             name: teacher.name,
             department: teacher.department,
             title: teacher.title,
-            // 以下字段根据后端实际情况调整，这里添加默认值
-            rating: teacher.rating || 4.5,
-            reviewCount: teacher.reviewCount || 0,
-            avatar: teacher.avatar || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
+            avatar: teacher.profileUrl || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
             tags: teacher.tags || [],
-            courses: teacher.courses || []
+            recommendations: teacher.recommendcount || 0, // 推荐人数
+            researchAreas: teacher.researchArea || []    // 主要研究方向
           }));
           console.log('教师数据:', this.teachers); // 调试日志
           // 动态生成院系筛选选项
@@ -323,6 +312,12 @@ export default {
 </script>
 
 <style scoped>
+.el-col {
+  display: flex;
+  flex-direction: column; /* 让子元素按列排列 */
+  height: 100%; /* 确保列的高度占满父容器 */
+}
+
 .teachers-container {
   padding: 20px 0;
 }
@@ -348,9 +343,13 @@ export default {
 .teacher-card {
   margin-bottom: 20px;
   transition: transform 0.3s;
-  height: 100%;
+  height: 100%; /* 确保卡片高度占满父容器 */
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* 让内容和按钮按列排列 */
+  justify-content: space-between; /* 确保内容和按钮之间有足够的空间 */
+  background-color: #fff; /* 确保卡片背景为白色 */
+  border-radius: 8px; /* 可选：为卡片添加圆角 */
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1); /* 可选：为卡片添加阴影 */
 }
 
 .teacher-card:hover {
@@ -377,9 +376,10 @@ export default {
 }
 
 .teacher-body {
-  flex: 1;
+  flex: 1; /* 让内容区域占据剩余空间 */
   display: flex;
   flex-direction: column;
+  justify-content: flex-start; /* 确保内容从顶部开始排列 */
 }
 
 .teacher-body h3 {
@@ -421,9 +421,12 @@ export default {
 }
 
 .teacher-footer {
-  margin-top: 15px;
   display: flex;
   justify-content: space-between;
+  padding: 10px 15px; /* 添加内边距 */
+  background-color: #fff; /* 确保按钮区域背景与卡片一致 */
+  border-top: 1px solid #ebeef5; /* 添加顶部边框以区分内容和按钮 */
+  margin-top: auto; /* 将按钮区域推到卡片底部 */
 }
 
 .pagination-container {
@@ -450,5 +453,26 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.teacher-recommendations {
+  text-align: center;
+  color: #606266;
+  margin: 5px 0;
+}
+
+.teacher-research {
+  margin-top: 10px;
+}
+
+.teacher-research h4 {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 5px;
+}
+
+.teacher-research p {
+  color: #909399;
+  font-size: 13px;
 }
 </style> 
