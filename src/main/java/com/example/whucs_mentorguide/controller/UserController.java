@@ -86,5 +86,33 @@ public class UserController {
         return Result.success();
     }
 
+    @ResponseBody
+    @PostMapping("/update")
+    public Result<?> updateProfile(@RequestBody User user) {
+        // 检查用户是否存在
+        User existingUser = userMapper.selectById(user.getId());
+        if (existingUser == null) {
+            return Result.error("-1", "用户不存在");
+        }
 
+        // 如果提供了新密码，则更新密码
+        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            existingUser.setPassword(user.getPassword());
+        }
+
+
+        // 更新用户信息
+        userMapper.updateById(existingUser);
+        return Result.success();
+    }
+
+    @ResponseBody
+    @GetMapping("/info")
+    public Result<?> getUserInfo(@RequestParam String username) {
+        User user = userMapper.selectOne(Wrappers.<User>lambdaQuery().eq(User::getUsername, username));
+        if (user == null) {
+            return Result.error("-1", "用户不存在");
+        }
+        return Result.success(user);
+    }
 }
