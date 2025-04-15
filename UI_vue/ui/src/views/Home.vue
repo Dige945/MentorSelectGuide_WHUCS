@@ -28,32 +28,7 @@
     </div>
     
     <!-- 热门教师推荐 -->
-    <div class="recommend-section">
-      <h3 class="section-title">热门教师推荐</h3>
-      <el-row :gutter="20">
-        <el-col :span="6" v-for="teacher in popularTeachers" :key="teacher.id">
-          <el-card shadow="hover" class="teacher-card">
-            <div class="teacher-avatar">
-              <el-avatar :size="80" :src="teacher.avatar"></el-avatar>
-            </div>
-            <div class="teacher-info">
-              <h4>{{ teacher.name }}</h4>
-              <p>{{ teacher.department }}</p>
-              <div class="teacher-rating">
-                <el-rate
-                  v-model="teacher.rating"
-                  disabled
-                  show-score
-                  text-color="#ff9900"
-                ></el-rate>
-              </div>
-              <p class="teacher-specialty">{{ teacher.specialty }}</p>
-              <el-button type="primary" plain size="small">查看详情</el-button>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </div>
+    <HotTeachers />
     
     <!-- 最新评价 -->
     <div class="reviews-section">
@@ -84,51 +59,19 @@
 
 <script>
 import { Search } from '@element-plus/icons-vue'
+import HotTeachers from '@/components/HotTeachers.vue'
 
 export default {
   name: 'HomePage',
   components: {
-    Search
+    Search,
+    HotTeachers
   },
   data() {
     return {
       searchKeyword: '',
       searchType: 'teacher',
       hotTags: ['计算机视觉', '自然语言处理', '机器学习', '人工智能', '数据挖掘'],
-      popularTeachers: [
-        {
-          id: 1,
-          name: '杜博',
-          department: '人工智能系',
-          rating: 4.8,
-          specialty: '人工智能、机器学习',
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
-        },
-        {
-          id: 2,
-          name: '李教授',
-          department: '计算机科学系',
-          rating: 4.7,
-          specialty: '操作系统、分布式系统',
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
-        },
-        {
-          id: 3,
-          name: '王教授',
-          department: '软件工程系',
-          rating: 4.9,
-          specialty: '软件工程、项目管理',
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
-        },
-        {
-          id: 4,
-          name: '张教授',
-          department: '信息安全系',
-          rating: 4.6,
-          specialty: '网络安全、密码学',
-          avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
-        }
-      ],
       latestReviews: [
         {
           id: 1,
@@ -198,7 +141,7 @@ export default {
   background: linear-gradient(135deg, #409EFF 0%, #42b983 100%);
   border-radius: 8px;
   color: white;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
 }
 
 .search-section h2 {
@@ -207,85 +150,29 @@ export default {
 }
 
 .search-box {
-  max-width: 600px;
-  margin: 0 auto 20px;
   display: flex;
-  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
 .search-input {
-  flex: 1;
+  width: 500px;
 }
 
 .search-tags {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.search-tags .el-tag {
+  margin: 0 5px;
+  cursor: pointer;
 }
 
 .section-title {
-  margin: 30px 0 20px;
-  font-size: 22px;
+  text-align: center;
+  margin: 40px 0;
   color: #303133;
-  position: relative;
-  padding-left: 12px;
-}
-
-.section-title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 20px;
-  background-color: #409EFF;
-  border-radius: 2px;
-}
-
-.teacher-card {
-  margin-bottom: 20px;
-  transition: transform 0.3s;
-}
-
-.teacher-card:hover {
-  transform: translateY(-5px);
-}
-
-.teacher-avatar {
-  text-align: center;
-  margin-bottom: 15px;
-}
-
-.teacher-info {
-  text-align: center;
-}
-
-.teacher-info h4 {
-  margin: 10px 0;
-  font-size: 18px;
-}
-
-.teacher-info p {
-  color: #606266;
-  margin: 5px 0;
-}
-
-.teacher-rating {
-  margin: 10px 0;
-}
-
-.teacher-specialty {
-  color: #909399;
-  font-size: 14px;
-  margin-bottom: 15px;
-  height: 40px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  font-size: 24px;
 }
 
 .reviews-section {
@@ -300,19 +187,11 @@ export default {
 .review-rating {
   display: flex;
   align-items: center;
-  gap: 10px;
+  margin-top: 10px;
 }
 
-/* 响应式设计 */
-@media (max-width: 992px) {
-  .el-col {
-    width: 50% !important;
-  }
-}
-
-@media (max-width: 768px) {
-  .el-col {
-    width: 100% !important;
-  }
+.review-rating span {
+  margin-right: 10px;
+  color: #606266;
 }
 </style> 

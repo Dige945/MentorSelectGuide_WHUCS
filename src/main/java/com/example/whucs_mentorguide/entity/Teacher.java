@@ -28,6 +28,9 @@ public class Teacher {
     // rank_level: varchar(20)，可为空
     private String rankLevel;
 
+    // recommendcount: int，可为空
+    private Integer recommendcount;
+
     // created_at: timestamp，非空
     private java.sql.Timestamp createdAt;
 
@@ -92,6 +95,15 @@ public class Teacher {
 
     public void setRankLevel(String rankLevel) {
         this.rankLevel = rankLevel;
+    }
+
+    // Getter and Setter for recommendcount
+    public Integer getRecommendcount() {
+        return recommendcount;
+    }
+
+    public void setRecommendcount(Integer recommendcount) {
+        this.recommendcount = recommendcount;
     }
 
     // Getter and Setter for createdAt

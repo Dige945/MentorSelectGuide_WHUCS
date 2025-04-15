@@ -31,4 +31,14 @@ public class TeacherController {
         List<Teacher> teachers = teacherMapper.selectList(Wrappers.emptyWrapper());
         return Result.success(teachers);
     }
+
+    @GetMapping("/hot")
+    public Result<?> getHotTeachers() {
+        List<Teacher> hotTeachers = teacherMapper.selectList(
+            Wrappers.<Teacher>lambdaQuery()
+                .orderByDesc(Teacher::getRecommendcount)
+                .last("LIMIT 5")
+        );
+        return Result.success(hotTeachers);
+    }
 }

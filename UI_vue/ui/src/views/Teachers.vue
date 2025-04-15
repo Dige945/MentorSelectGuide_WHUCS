@@ -60,7 +60,7 @@
         </div>
       </div>
       <div class="teacher-footer">
-      <el-button type="text" @click="viewTeacherDetail(teacher.id)">查看详情</el-button>
+      <el-button type="link" @click="viewTeacherDetail(teacher.id)">查看详情</el-button>
       <el-button type="primary" @click="showReviewDialog(teacher)">评价</el-button>
     </div>
     </el-card>
