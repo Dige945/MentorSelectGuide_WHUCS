@@ -1,130 +1,156 @@
 <template>
   <div class="home-container">
-    <!-- 搜索区域 -->
-    <div class="search-section">
-      <h2>找到最适合你的老师和课程</h2>
-      <div class="search-box">
-        <el-select v-model="searchType" placeholder="选择搜索类型" style="width: 120px; margin-right: 10px">
-          <el-option label="教师" value="teacher" />
-          <el-option label="研究方向" value="research" />
-        </el-select>
-        <el-input
-          v-model="searchKeyword"
-          :placeholder="searchType === 'teacher' ? '输入教师姓名' : '输入研究方向'"
-          class="search-input"
-        >
-          <template #append>
-            <el-button type="primary" @click="handleSearch">
-              <el-icon><Search /></el-icon>
-              搜索
-            </el-button>
-          </template>
-        </el-input>
-      </div>
-      <div class="search-tags">
-        <span>热门搜索：</span>
-        <el-tag v-for="tag in hotTags" :key="tag" clickable @click="handleTagClick(tag)">{{ tag }}</el-tag>
+    <!-- 顶部横幅 -->
+    <div class="hero-section">
+      <div class="hero-content">
+        <h1>武汉大学计算机学院导师推荐系统</h1>
+        <p>发现最适合您的研究导师，开启科研之旅</p>
       </div>
     </div>
-    
-    <!-- 热门教师推荐 -->
-    <HotTeachers />
-    
-    <!-- 最新评价 -->
-    <div class="reviews-section">
-      <h3 class="section-title">最新评价</h3>
-      <el-timeline>
-        <el-timeline-item
-          v-for="review in latestReviews"
-          :key="review.id"
-          :timestamp="review.date"
-          placement="top"
+
+    <!-- 搜索框部分 -->
+    <div class="search-section">
+      <div class="search-container">
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索导师姓名或研究方向"
+          class="search-input"
+          @input="handleSearch"
+          clearable
         >
-          <el-card>
-            <h4>{{ review.teacherName }} - {{ review.courseName }}</h4>
-            <p class="review-content">{{ review.content }}</p>
-            <div class="review-rating">
-              <span>评分：</span>
-              <el-rate
-                v-model="review.rating"
-                disabled
-              ></el-rate>
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        
+        <!-- 搜索结果下拉框 -->
+        <div v-if="searchResults.length > 0" class="search-results">
+          <div 
+            v-for="teacher in searchResults" 
+            :key="teacher.id" 
+            class="search-result-item"
+            @mouseenter="showButton(teacher.id)"
+            @mouseleave="hideButton(teacher.id)"
+          >
+            <div class="teacher-info">
+              <span class="teacher-name">{{ teacher.name }}</span>
+              <span class="teacher-title">{{ teacher.title }}</span>
             </div>
-          </el-card>
-        </el-timeline-item>
-      </el-timeline>
+            <el-button 
+              v-if="hoveredTeacherId === teacher.id"
+              type="primary" 
+              size="small"
+              @click="openTeacherProfile(teacher)"
+            >
+              查看主页
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 统计数据展示 -->
+    <div class="stats-section">
+      <div class="stat-card">
+        <el-icon><User /></el-icon>
+        <div class="stat-number">50+</div>
+        <div class="stat-label">优秀导师</div>
+      </div>
+      <div class="stat-card">
+        <el-icon><Collection /></el-icon>
+        <div class="stat-number">10+</div>
+        <div class="stat-label">研究方向</div>
+      </div>
+      <div class="stat-card">
+        <el-icon><Medal /></el-icon>
+        <div class="stat-number">100+</div>
+        <div class="stat-label">成功案例</div>
+      </div>
+    </div>
+
+    <!-- 主要内容区域 -->
+    <div class="main-content">
+      <!-- 热门导师推荐 -->
+      <div class="section-container">
+        <div class="section-header">
+          <h2>热门导师</h2>
+        </div>
+        <HotTeachers />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { Search } from '@element-plus/icons-vue'
+import { ref, onMounted } from 'vue'
+import { Search, User, Collection, Medal, ArrowRight } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 import HotTeachers from '@/components/HotTeachers.vue'
+import ResearchAreas from '@/components/ResearchAreas.vue'
 
 export default {
-  name: 'HomePage',
+  name: 'Home',
   components: {
+    HotTeachers,
+    ResearchAreas,
     Search,
-    HotTeachers
+    User,
+    Collection,
+    Medal,
+    ArrowRight
   },
-  data() {
-    return {
-      searchKeyword: '',
-      searchType: 'teacher',
-      hotTags: ['计算机视觉', '自然语言处理', '机器学习', '人工智能', '数据挖掘'],
-      latestReviews: [
-        {
-          id: 1,
-          teacherName: '杜博',
-          courseName: '人工智能导论',
-          content: '老师讲课非常生动，能够将复杂的理论讲解得通俗易懂。',
-          rating: 5,
-          date: '2024-03-15'
-        },
-        {
-          id: 2,
-          teacherName: '李教授',
-          courseName: '操作系统',
-          content: '课程内容充实，实验指导详细，收获很大。',
-          rating: 4.5,
-          date: '2024-03-14'
-        },
-        {
-          id: 3,
-          teacherName: '王教授',
-          courseName: '软件工程',
-          content: '理论与实践结合得很好，项目经验分享很有价值。',
-          rating: 4.8,
-          date: '2024-03-13'
-        }
-      ]
-    }
-  },
-  methods: {
-    handleSearch() {
-      if (!this.searchKeyword.trim()) {
-        this.$message.warning('请输入搜索关键词')
-        return
+  setup() {
+    const searchKeyword = ref('')
+    const searchResults = ref([])
+    const hoveredTeacherId = ref(null)
+    let searchTimer = null
+
+    const handleSearch = () => {
+      if (searchTimer) {
+        clearTimeout(searchTimer)
       }
       
-      if (this.searchType === 'teacher') {
-        // 跳转到教师列表页面，并传递搜索参数
-        this.$router.push({
-          path: '/teachers',
-          query: { search: this.searchKeyword }
-        })
-      } else {
-        // 跳转到研究方向页面，并传递搜索参数
-        this.$router.push({
-          path: '/research',
-          query: { search: this.searchKeyword }
-        })
+      if (!searchKeyword.value) {
+        searchResults.value = []
+        return
       }
-    },
-    handleTagClick(tag) {
-      this.searchType = 'research'
-      this.searchKeyword = tag
-      this.handleSearch()
+
+      searchTimer = setTimeout(async () => {
+        try {
+          const res = await request.get(`/teachers/search?keyword=${searchKeyword.value}`)
+          if (res.code === '0') {
+            searchResults.value = res.data
+          }
+        } catch (error) {
+          console.error('搜索失败:', error)
+        }
+      }, 300)
+    }
+
+    const showButton = (teacherId) => {
+      hoveredTeacherId.value = teacherId
+    }
+
+    const hideButton = () => {
+      hoveredTeacherId.value = null
+    }
+
+    const openTeacherProfile = (teacher) => {
+      if (teacher.profileUrl) {
+        window.open(teacher.profileUrl, '_blank')
+      } else {
+        ElMessage.warning('该导师暂无个人主页')
+      }
+    }
+
+    return {
+      searchKeyword,
+      searchResults,
+      hoveredTeacherId,
+      handleSearch,
+      showButton,
+      hideButton,
+      openTeacherProfile
     }
   }
 }
@@ -132,66 +158,184 @@ export default {
 
 <style scoped>
 .home-container {
-  width: 100%;
+  min-height: 100vh;
+  background-color: #f8f9fa;
 }
 
-.search-section {
+.hero-section {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  padding: 80px 20px;
   text-align: center;
-  padding: 40px 0;
-  background: linear-gradient(135deg, #409EFF 0%, #42b983 100%);
-  border-radius: 8px;
   color: white;
   margin-bottom: 40px;
 }
 
-.search-section h2 {
-  margin-bottom: 20px;
-  font-size: 28px;
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.search-box {
-  display: flex;
-  justify-content: center;
+.hero-content h1 {
+  font-size: 2.5em;
   margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.hero-content p {
+  font-size: 1.2em;
+  opacity: 0.9;
+}
+
+.search-section {
+  margin: -40px auto 40px;
+  max-width: 600px;
+  padding: 0 20px;
+  position: relative;
+  z-index: 10;
+}
+
+.search-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .search-input {
-  width: 500px;
+  width: 100%;
 }
 
-.search-tags {
-  margin-top: 20px;
-}
-
-.search-tags .el-tag {
-  margin: 0 5px;
-  cursor: pointer;
-}
-
-.section-title {
-  text-align: center;
-  margin: 40px 0;
-  color: #303133;
-  font-size: 24px;
-}
-
-.reviews-section {
-  margin-top: 40px;
-}
-
-.review-content {
-  margin: 10px 0;
-  color: #606266;
-}
-
-.review-rating {
-  display: flex;
-  align-items: center;
+.search-results {
   margin-top: 10px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
 }
 
-.review-rating span {
-  margin-right: 10px;
-  color: #606266;
+.search-result-item {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.3s;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background-color: #f5f7fa;
+}
+
+.teacher-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.teacher-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.teacher-title {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.stats-section {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin: 40px auto;
+  max-width: 1200px;
+  padding: 0 20px;
+}
+
+.stat-card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+  flex: 1;
+  max-width: 200px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-card .el-icon {
+  font-size: 2em;
+  color: var(--el-color-primary);
+  margin-bottom: 12px;
+}
+
+.stat-number {
+  font-size: 1.8em;
+  font-weight: 600;
+  color: #333;
+  margin: 8px 0;
+}
+
+.stat-label {
+  color: #666;
+  font-size: 1em;
+}
+
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.section-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h2 {
+  font-size: 1.5em;
+  color: #333;
+  margin: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 60px 20px;
+  }
+
+  .hero-content h1 {
+    font-size: 2em;
+  }
+
+  .stats-section {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .stat-card {
+    width: 100%;
+    max-width: none;
+  }
 }
 </style> 
+

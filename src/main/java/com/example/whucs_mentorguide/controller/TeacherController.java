@@ -5,10 +5,7 @@ import com.example.whucs_mentorguide.common.Result;
 import com.example.whucs_mentorguide.entity.Teacher;
 import com.example.whucs_mentorguide.mapper.TeacherMapper;
 import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -40,5 +37,15 @@ public class TeacherController {
                 .last("LIMIT 5")
         );
         return Result.success(hotTeachers);
+    }
+
+    @GetMapping("/search")
+    public Result<?> searchTeachers(@RequestParam String keyword) {
+        List<Teacher> teachers = teacherMapper.selectList(
+            Wrappers.<Teacher>lambdaQuery()
+                .like(Teacher::getName, keyword)
+                .last("LIMIT 10")
+        );
+        return Result.success(teachers);
     }
 }
