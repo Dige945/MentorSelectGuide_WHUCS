@@ -1,5 +1,6 @@
 <script>
 import request from '@/utils/request'
+import { marked } from 'marked'
 
 export default {
   name: 'AIRecommend',
@@ -33,10 +34,10 @@ export default {
     loadTeachers() {
       try {
         console.log('开始加载教师数据...')
-        
+
         request.get("teachers/all").then(res => {
           console.log('API响应:', res)
-          if (res.code === 200) {
+          if (res.code === 200 || res.code === "0") {
             this.teachers = res.data
             console.log('成功从API获取教师数据:', this.teachers)
           } else {
@@ -76,7 +77,7 @@ export default {
           rank: '正高级'
         },
         {
-          id: 3, 
+          id: 3,
           name: '刘树波',
           title: '教授',
           research_area: '嵌入式系统,物联网及其应用',
@@ -103,7 +104,7 @@ export default {
           rank: '正高级'
         }
       ]
-      
+
       console.log('成功加载教师模拟数据:', this.teachers)
     },
     toggleTag(tag) {
@@ -125,61 +126,139 @@ export default {
       return tag ? tag.label : value
     },
     async handleSubmit() {
-      if (!this.canSubmit || this.isLoading) return
+      if (!this.canSubmit || this.isLoading) return;
 
-      this.isLoading = true
-      this.recommendation = ''
+      this.isLoading = true;
+      this.recommendation = '';
 
       try {
         // 确保教师数据已加载
         if (this.teachers.length === 0) {
-          await this.loadTeachers()
+          await this.loadTeachers();
         }
 
-        // 使用request向后端发送请求
-        try {
-          // 取消注释下面的代码来启用DeepSeek推荐
-          /*
-          request.post("/deepSeek/recommend", {
-            tags: this.selectedTags,
-            preferences: this.userInput.trim(),
-            teachers: this.teachers
-          }).then(res => {
-            console.log('DeepSeek响应:', res)
-            if (res.code === 200) {
-              this.recommendation = res.data
-            } else {
-              console.warn('DeepSeek API请求失败，使用本地推荐')
-              this.useLocalRecommend()
+        // 构建请求数据
+        const requestData = {
+          tags: this.selectedTags.map(tag => this.getTagLabel(tag)),
+          preferences: this.userInput.trim(),
+          teachers: this.teachers.map(teacher => ({
+            id: teacher.id,
+            name: teacher.name,
+            title: teacher.title,
+            research_area: teacher.research_area || teacher.researchArea,
+            profile_url: teacher.profile_url || teacher.profileUrl,
+            department: teacher.department,
+            rank: teacher.rank
+          }))
+        };
+
+        console.log('发送到DeepSeek的请求数据:', requestData);
+
+        // 使用fetch API处理流式响应
+        fetch('/api/deepSeek/recommend', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream'
+          },
+          body: JSON.stringify(requestData)
+        }).then(async response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          // 处理流式响应
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let result = '';
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+
+            // 处理流式数据，按行处理
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // 保留最后一个可能不完整的行
+
+            for (const line of lines) {
+              if (line.startsWith('data:')) {
+                // 移除'data:'前缀并添加到结果中
+                const content = line.substring(5).trim();
+                if (content) {
+                  result += content;
+                }
+              }
             }
-          }).catch(error => {
-            console.warn('DeepSeek API请求异常，使用本地推荐:', error)
-            this.useLocalRecommend()
-          })
-          */
-          
-          // 暂时使用本地推荐
-          this.useLocalRecommend()
-        } catch (error) {
-          console.error('推荐处理失败:', error)
-          this.$message.error(`推荐处理失败: ${error.message}`)
-          this.useLocalRecommend()
-        }
+
+            // 预处理文本，修复常见格式问题
+            let formattedText = result;
+            // 修复标题格式
+            formattedText = formattedText.replace(/•\s*title">(.*?)(?=•|$)/g, '### $1\n');
+            
+            // 修复常见的空格问题
+            formattedText = formattedText.replace(/(\w)\s(\w)/g, '$1$2'); // 移除英文字符之间的空格
+            formattedText = formattedText.replace(/(\d)\s(\d)/g, '$1$2'); // 移除数字之间的空格
+            formattedText = formattedText.replace(/\s+([，。！？、：；])/g, '$1'); // 移除中文标点前的空格
+            formattedText = formattedText.replace(/([，。！？、：；])\s+/g, '$1'); // 移除中文标点后的空格
+            formattedText = formattedText.replace(/\s{2,}/g, ' '); // 将多个空格替换为一个
+            
+            // 修复Markdown格式
+            formattedText = formattedText.replace(/\#\#\#\s*(\d+)\s*\.\s*/g, '### $1. '); // 修复标题数字格式
+            formattedText = formattedText.replace(/\-\s+/g, '- '); // 修复列表项格式
+            formattedText = formattedText.replace(/\*\*\s+/g, '**'); // 修复加粗开始格式
+            formattedText = formattedText.replace(/\s+\*\*/g, '**'); // 修复加粗结束格式
+            
+            // 确保段落之间有适当的换行
+            formattedText = formattedText.replace(/\n\s*\n/g, '\n\n');
+
+            // 将格式化后的文本设置为推荐结果
+            this.recommendation = formattedText;
+          }
+
+          console.log('DeepSeek API响应完成:', result);
+        }).catch(error => {
+          console.error('DeepSeek API请求失败:', error);
+          this.$message.error('AI推荐服务暂时不可用，将使用本地推荐');
+          this.useLocalRecommend();
+        }).finally(() => {
+          this.isLoading = false;
+        });
+
       } catch (error) {
-        console.error('处理推荐失败:', error)
-        this.$message.error(`处理推荐失败: ${error.message}`)
-      } finally {
-        this.isLoading = false
+        console.error('推荐处理失败:', error);
+        this.$message.error(`推荐处理失败: ${error.message}`);
+        this.useLocalRecommend();
+        this.isLoading = false;
       }
     },
-    
+
+    formatRecommendation(text) {
+      if (!text) return '';
+      
+      // 设置marked选项
+      marked.setOptions({
+        breaks: true,
+        gfm: true
+      });
+      
+      // 处理链接
+      text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+      
+      // 解析markdown
+      return marked(text);
+    },
+
     useLocalRecommend() {
       // 获取选中的标签的标签文本
       const selectedTagsText = this.selectedTags.map(tag => this.getTagLabel(tag)).join('、')
-      
+
       // 根据标签和用户输入进行简单的本地推荐逻辑
       let recommendTeachers = [...this.teachers]
-      
+
       // 如果选择了"科研成果多"标签，优先推荐研究方向多的老师
       if (this.selectedTags.includes('research')) {
         recommendTeachers.sort((a, b) => {
@@ -188,7 +267,7 @@ export default {
           return bResearchCount - aResearchCount
         })
       }
-      
+
       // 如果用户有输入特定研究方向的偏好
       if (this.userInput) {
         const userPreferences = this.userInput.toLowerCase()
@@ -197,12 +276,12 @@ export default {
           return teacher.research_area.toLowerCase().includes(userPreferences)
         })
       }
-      
+
       // 生成推荐文本
       this.recommendation = `根据您选择的标签：${selectedTagsText || '无'}\n`
       this.recommendation += `以及您的输入：${this.userInput || '无'}\n\n`
       this.recommendation += `我们为您推荐以下导师：\n\n`
-      
+
       if (recommendTeachers.length === 0) {
         this.recommendation += `很抱歉，没有找到符合条件的导师。请尝试其他条件。`
       } else {
@@ -278,10 +357,13 @@ export default {
       </div>
     </div>
 
-    <div class="result-section" v-if="recommendation">
-      <h2>推荐结果</h2>
-      <div class="recommendation-content">
-        {{ recommendation }}
+    <div class="recommendation-container">
+      <div v-if="recommendation" class="recommendation-content">
+        <div v-html="formatRecommendation(recommendation)"></div>
+      </div>
+      <div v-else-if="isLoading" class="loading">
+        <div class="spinner"></div>
+        <p>正在生成推荐结果...</p>
       </div>
     </div>
   </div>
@@ -358,22 +440,85 @@ export default {
   justify-content: flex-end;
 }
 
-.result-section {
-  background: #f5f7fa;
+.recommendation-container {
+  margin-top: 20px;
   padding: 20px;
+  background-color: #fff;
   border-radius: 8px;
-}
-
-.result-section h2 {
-  font-size: 18px;
-  color: #606266;
-  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .recommendation-content {
+  font-size: 14px;
   line-height: 1.6;
-  color: #303133;
-  white-space: pre-wrap;
+}
+
+.recommendation-content h2 {
+  color: #1890ff;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.recommendation-content h3 {
+  color: #333;
+  margin: 20px 0 10px;
+  font-size: 16px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+.recommendation-content ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.recommendation-content li {
+  margin-bottom: 8px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.recommendation-content li:before {
+  content: "•";
+  color: #1890ff;
+  position: absolute;
+  left: 0;
+}
+
+.recommendation-content a {
+  color: #1890ff;
+  text-decoration: none;
+}
+
+.recommendation-content a:hover {
+  text-decoration: underline;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.loading p {
+  margin-top: 10px;
+  color: #666;
+}
+
+.spinner {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(24, 144, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #1890ff;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {

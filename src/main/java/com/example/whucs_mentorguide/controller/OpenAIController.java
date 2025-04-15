@@ -2,7 +2,6 @@ package com.example.whucs_mentorguide.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -23,6 +22,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.Arrays;
 
 /**
  * DeepSeek AI 聊天控制器
@@ -30,7 +30,6 @@ import java.util.concurrent.Executors;
  */
 @RestController
 @RequestMapping("deepSeek")
-//@Slf4j
 public class OpenAIController {
 
     private static final Logger log = LoggerFactory.getLogger(OpenAIController.class);
@@ -41,7 +40,12 @@ public class OpenAIController {
 
     // DeepSeek API 基础地址（从配置文件中注入）
     @Value("${ai.config.deepseek.baseUrl}")
-    private String API_URL;
+    private String API_BASE_URL;
+
+    // 完整的API URL
+    private String getApiUrl() {
+        return API_BASE_URL + "/chat/completions";
+    }
 
     // 系统提示词（从配置文件中注入）
     @Value("${ai.systemPrompt}")
@@ -117,7 +121,7 @@ public class OpenAIController {
 
                 // --- API请求构造 ---
                 try (CloseableHttpClient client = HttpClients.createDefault()) {
-                    HttpPost request = new HttpPost(API_URL);
+                    HttpPost request = new HttpPost(getApiUrl());
 
                     // 设置请求头
                     request.setHeader("Content-Type", "application/json");
@@ -184,7 +188,13 @@ public class OpenAIController {
                     }
                 } catch (Exception e) {
                     log.error("DeepSeek API请求处理异常", e);
-                    emitter.completeWithError(e); // 异常结束流
+                    try {
+                        // 发送错误消息到前端
+                        emitter.send("AI聊天服务暂时不可用，请稍后再试。错误信息: " + e.getMessage());
+                        emitter.complete();
+                    } catch (Exception ex) {
+                        emitter.completeWithError(e);
+                    }
                 }
             } catch (Exception e) {
                 log.error("请求处理流程异常", e);
@@ -199,6 +209,10 @@ public class OpenAIController {
     public SseEmitter recommend(@RequestBody Map<String, Object> request) {
         String userId = "123";
         SseEmitter emitter = new SseEmitter(-1L);
+
+        log.info("接收到推荐请求，请求内容: {}", request);
+        log.info("API URL: {}", getApiUrl());
+        log.info("API Key: {}", API_KEY.substring(0, 5) + "...");
 
         executorService.execute(() -> {
             try {
@@ -220,7 +234,7 @@ public class OpenAIController {
                 messages.add(userMessage);
 
                 try (CloseableHttpClient client = HttpClients.createDefault()) {
-                    HttpPost httpPost = new HttpPost(API_URL);
+                    HttpPost httpPost = new HttpPost(getApiUrl());
                     httpPost.setHeader("Content-Type", "application/json");
                     httpPost.setHeader("Authorization", "Bearer " + API_KEY);
 
@@ -232,50 +246,77 @@ public class OpenAIController {
                     String requestBody = objectMapper.writeValueAsString(requestMap);
                     httpPost.setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
 
-                    try (CloseableHttpResponse response = client.execute(httpPost);
-                         BufferedReader reader = new BufferedReader(
-                                 new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))) {
+                    log.info("发送到DeepSeek API的请求URL: {}", getApiUrl());
+                    log.info("发送到DeepSeek API的请求头: {}", Arrays.toString(httpPost.getAllHeaders()));
+                    log.info("发送到DeepSeek API的请求体: {}", requestBody);
 
-                        StringBuilder aiResponse = new StringBuilder();
-                        String line;
+                    try (CloseableHttpResponse response = client.execute(httpPost)) {
+                        int statusCode = response.getStatusLine().getStatusCode();
+                        log.info("DeepSeek API响应状态码: {}", statusCode);
 
-                        while ((line = reader.readLine()) != null) {
-                            if (line.startsWith("data: ")) {
-                                String jsonData = line.substring(6);
-                                if ("[DONE]".equals(jsonData)) {
-                                    break;
-                                }
-
-                                JsonNode node = objectMapper.readTree(jsonData);
-                                String content = node.path("choices")
-                                        .path(0)
-                                        .path("delta")
-                                        .path("content")
-                                        .asText("");
-
-                                if (!content.isEmpty()) {
-                                    emitter.send(content);
-                                    aiResponse.append(content);
-                                }
-                            }
+                        if (statusCode != 200) {
+                            String errorMessage = "DeepSeek API返回错误状态码: " + statusCode;
+                            log.error(errorMessage);
+                            emitter.send(errorMessage);
+                            emitter.complete();
+                            return;
                         }
 
-                        Map<String, String> aiMessage = new HashMap<>();
-                        aiMessage.put("role", "assistant");
-                        aiMessage.put("content", aiResponse.toString());
+                        try (BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))) {
 
-                        messages.add(aiMessage);
-                        sessionHistory.put(userId, messages);
+                            StringBuilder aiResponse = new StringBuilder();
+                            String line;
 
-                        log.info("推荐请求处理完成");
-                        emitter.complete();
+                            while ((line = reader.readLine()) != null) {
+                                if (line.startsWith("data: ")) {
+                                    String jsonData = line.substring(6);
+
+                                    if ("[DONE]".equals(jsonData)) {
+                                        break;
+                                    }
+
+                                    JsonNode node = objectMapper.readTree(jsonData);
+                                    String content = node.path("choices")
+                                            .path(0)
+                                            .path("delta")
+                                            .path("content")
+                                            .asText("");
+
+                                    if (!content.isEmpty()) {
+                                        emitter.send(content);
+                                        aiResponse.append(content);
+                                    }
+                                }
+                            }
+
+                            // 更新历史记录
+                            Map<String, String> aiMessage = new HashMap<>();
+                            aiMessage.put("role", "assistant");
+                            aiMessage.put("content", aiResponse.toString());
+
+                            messages.add(aiMessage);
+                            sessionHistory.put(userId, messages);
+
+                            log.info("推荐请求处理完成");
+                            emitter.complete();
+                        }
+                    } catch (Exception e) {
+                        log.error("DeepSeek API请求处理异常", e);
+                        try {
+                            // 发送错误消息到前端
+                            emitter.send("AI推荐服务暂时不可用，请稍后再试。错误信息: " + e.getMessage());
+                            emitter.complete();
+                        } catch (Exception ex) {
+                            emitter.completeWithError(e);
+                        }
                     }
                 } catch (Exception e) {
-                    log.error("DeepSeek API请求处理异常", e);
+                    log.error("推荐请求处理流程异常", e);
                     emitter.completeWithError(e);
                 }
             } catch (Exception e) {
-                log.error("请求处理流程异常", e);
+                log.error("推荐请求处理流程异常", e);
                 emitter.completeWithError(e);
             }
         });
@@ -284,45 +325,58 @@ public class OpenAIController {
     }
 
     private String buildSystemPrompt(Map<String, Object> request) {
-        return "你是一个专业的导师推荐助手。根据学生的偏好和教师信息，推荐最适合的导师。" +
-               "请分析教师的科研方向、职称、院系等信息，给出详细的推荐理由。";
+        return "你是一个专业的导师推荐系统。请根据用户的选择和偏好，推荐最适合的导师。\n" +
+               "请按照以下格式返回推荐结果：\n\n" +
+               "## 推荐导师列表\n\n" +
+               "### 1. [导师姓名]\n" +
+               "- 职称：[职称]\n" +
+               "- 所属院系：[院系]\n" +
+               "- 研究方向：[研究方向]\n" +
+               "- 个人主页：[个人主页链接]\n" +
+               "- 推荐理由：[详细推荐理由]\n\n" +
+               "### 2. [导师姓名]\n" +
+               "...\n\n" +
+               "请确保：\n" +
+               "1. 每个导师的信息用markdown格式清晰展示\n" +
+               "2. 推荐理由要具体，说明与用户需求的匹配点\n" +
+               "3. 个人主页链接要完整\n" +
+               "4. 不要有多余的空格和换行";
     }
 
     private String buildUserPrompt(Map<String, Object> request) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("请根据以下信息推荐合适的导师：\n\n");
+        prompt.append("请根据以下信息推荐导师：\n\n");
 
         // 添加标签信息
-        List<String> tags = (List<String>) request.get("tags");
-        if (tags != null && !tags.isEmpty()) {
-            prompt.append("期望的导师类型：\n");
-            for (String tag : tags) {
-                prompt.append("- ").append(tag).append("\n");
+        if (request.containsKey("tags") && request.get("tags") instanceof List) {
+            List<String> tags = (List<String>) request.get("tags");
+            if (!tags.isEmpty()) {
+                prompt.append("研究方向：").append(String.join("、", tags)).append("\n");
             }
-            prompt.append("\n");
         }
 
-        // 添加其他偏好
-        String preferences = (String) request.get("preferences");
-        if (preferences != null && !preferences.isEmpty()) {
-            prompt.append("其他偏好：\n").append(preferences).append("\n\n");
+        // 添加用户偏好
+        if (request.containsKey("preferences") && request.get("preferences") instanceof String) {
+            String preferences = (String) request.get("preferences");
+            if (!preferences.isEmpty()) {
+                prompt.append("用户偏好：").append(preferences).append("\n");
+            }
         }
 
         // 添加教师信息
-        List<Map<String, Object>> teachers = (List<Map<String, Object>>) request.get("teachers");
-        if (teachers != null && !teachers.isEmpty()) {
-            prompt.append("可选教师信息：\n");
+        if (request.containsKey("teachers") && request.get("teachers") instanceof List) {
+            List<Map<String, Object>> teachers = (List<Map<String, Object>>) request.get("teachers");
+            prompt.append("\n可选的教师列表：\n");
             for (Map<String, Object> teacher : teachers) {
-                prompt.append("教师：").append(teacher.get("name")).append("\n");
-                prompt.append("职称：").append(teacher.get("title")).append("\n");
-                prompt.append("院系：").append(teacher.get("department")).append("\n");
-                prompt.append("研究方向：").append(teacher.get("research_area")).append("\n");
-                prompt.append("个人主页：").append(teacher.get("profile_url")).append("\n");
-                prompt.append("排名：").append(teacher.get("rank")).append("\n\n");
+                prompt.append("- ").append(teacher.get("name")).append("（")
+                        .append(teacher.get("title")).append("，")
+                        .append(teacher.get("department")).append("，")
+                        .append("研究方向：").append(teacher.get("research_area")).append("，")
+                        .append("个人主页：").append(teacher.get("profile_url")).append("）\n");
             }
         }
 
-        prompt.append("请根据以上信息，推荐最适合的导师，并详细说明推荐理由。");
+        prompt.append("\n请根据以上信息，推荐最适合的导师，并说明推荐理由。");
         return prompt.toString();
     }
 }

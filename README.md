@@ -1,122 +1,137 @@
 # MentorSelectGuide_WHUCS
 
-这是一个基于Vue 3开发的武汉大学计算机学院导师指南系统前后端项目，旨在为学生科研之路提供指南。
+这是一个基于Vue 3和Spring Boot开发的武汉大学计算机学院导师指南系统，旨在为学生科研之路提供智能化指南。
 
-## 项目简介
+## 项目特点
 
-本系统提供以下主要功能：
+- 基于DeepSeek API的智能推荐
+- 实时流式对话响应
+- 前后端分离架构
+- RESTful API设计
+
+## 技术栈
+
+### 前端
+- **框架**: Vue 3
+- **UI组件库**: Element Plus
+- **路由管理**: Vue Router 4
+- **HTTP客户端**: Axios
+- **图标库**: Element Plus Icons
+
+### 后端
+- **框架**: Spring Boot
+- **API集成**: DeepSeek API
+- **数据库**: MySQL (计划中)
+- **模板引擎**: Thymeleaf
+- **构建工具**: Maven
+
+## 系统功能
+
+### 已实现功能
+- AI智能对话（基于SSE流式响应）
+- 智能导师推荐
+- 基础页面框架
+
+### 待实现功能
 - 教师信息浏览与搜索
 - 课程信息查询
 - 教师评价提交与查看
 - 教师与课程排行榜
-
-## 技术栈
-
-- **前端框架**：Vue 3
-- **UI组件库**：Element Plus
-- **路由管理**：Vue Router 4
-- **图标库**：Element Plus Icons
+- 用户登录注册系统
+- 个人中心
 
 ## 项目结构
 
 ```
 MentorSelectGuide_WHUCS/
-├── UI_vue/                  # 前端项目目录
-│   └── ui/                  # Vue项目
+├── UI_vue/                  # 前端项目
+│   └── ui/
 │       ├── public/          # 静态资源
-│       ├── src/             # 源代码
-│       │   ├── assets/      # 图片等资源
+│       ├── src/
+│       │   ├── assets/      # 资源文件
 │       │   ├── components/  # 通用组件
-│       │   │   └── Layout.vue  # 布局组件
 │       │   ├── router/      # 路由配置
-│       │   │   └── index.js # 主路由配置文件
 │       │   ├── views/       # 页面组件
-│       │   │   ├── Home.vue    # 首页
-│       │   │   ├── Teachers.vue # 教师列表页
-│       │   │   └── NotFound.vue # 404页面
-│       │   ├── App.vue      # 应用入口组件
-│       │   └── main.js      # 应用入口文件
-│       ├── babel.config.js  # Babel配置
-│       ├── package.json     # 依赖管理
-│       └── vue.config.js    # Vue配置文件
-└── README.md                # 项目说明文档
+│       │   ├── App.vue      
+│       │   └── main.js      
+│       └── package.json     
+│
+└── src/                     # 后端项目
+    ├── main/
+    │   ├── java/
+    │   │   └── com/example/whucs_mentorguide/
+    │   │       ├── controller/    # 控制器
+    │   │       ├── service/       # 服务层
+    │   │       ├── model/         # 数据模型
+    │   │       └── config/        # 配置类
+    │   └── resources/
+    │       ├── application.properties  # 应用配置
+    │       └── templates/         # 模板文件
+    └── test/                # 测试目录
 ```
 
-## 功能模块
+## 快速开始
 
-### 1. 首页（待实现）
-
-- 搜索功能：支持按导师姓名、研究方向等关键词搜索
-- 热门导师推荐：展示评分较高的导师信息
-- 最新评价：展示最新的导师评价内容
-
-### 2. 导师列表（待实现）
-
-- 筛选功能：支持按专业、评分等条件筛选导师
-- 排序功能：支持按评分高低、评价数量等方式排序
-- 导师卡片：展示导师基本信息、评分、标签等
-
-### 3. 科研方向（待实现）
-
-- 按专业、科研方向等筛选导师
-- 展示实验室详情、组内氛围、学生评价等
-
-### 4. 排行榜（待实现）
-
-- 导师排行：按评分、受欢迎程度等维度展示教师排名
-- 实验室排行：展示最受欢迎的实验室（导师）
-
-### 5. 关于我们（待实现）
-
-- 系统介绍
-- 使用指南
-- 联系方式
-
-## 安装与运行
-
-1. 安装依赖：
+### 前端启动
 ```bash
 cd UI_vue/ui
 npm install
-```
-
-2. 开发环境运行：
-```bash
 npm run serve
 ```
 
-3. 构建生产环境：
+### 后端启动
 ```bash
-npm run build
+# 使用Maven启动Spring Boot应用
+./mvnw spring-boot:run
+```
+
+## 配置说明
+
+### DeepSeek API配置
+在 `application.properties` 中配置：
+```properties
+ai.config.deepseek.apiKey=your_api_key
+ai.config.deepseek.baseUrl=https://api.deepseek.com/v1
+```
+
+### 数据库配置
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/<your-database-name>
+spring.datasource.username=<username>
+spring.datasource.password=<password>
 ```
 
 ## 浏览器兼容性
 
-- 推荐使用Chrome、Firefox、Edge等现代浏览器
-- 支持最新两个版本的主流浏览器
-- 不支持IE 11及以下版本
+- Chrome (最新版本)
+- Firefox (最新版本)
+- Edge (最新版本)
+- Safari (最新版本)
 
-## 项目规划
+## 开发计划
 
 ### 近期计划
-- 接入Deepseek Api实现智能推荐功能
-- 完善现有页面功能
-- 实现用户登录注册
-- 添加教师详情页
-- 实现评价提交功能
+1. 完善AI推荐系统
+2. 实现用户认证系统
+3. 开发教师详情页
+4. 实现评价提交功能
+5. 数据库集成
 
 ### 长期计划
-
-- 集成后端API
-- 增加用户个人中心
-- 添加管理员功能
-- 优化移动端适配
-- 实现数据可视化展示
+1. 优化AI对话体验
+2. 添加数据分析功能
+3. 实现移动端适配
+4. 添加管理员后台
+5. 优化系统性能
 
 ## 贡献指南
 
-欢迎提交Issue或Pull Request来帮助改进本项目。
+1. Fork 项目
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 提交 Pull Request
 
 ## 许可证
 
-本项目采用MIT许可证。
+本项目采用 MIT 许可证
