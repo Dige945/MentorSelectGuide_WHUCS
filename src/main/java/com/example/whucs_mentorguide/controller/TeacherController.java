@@ -48,4 +48,16 @@ public class TeacherController {
         );
         return Result.success(teachers);
     }
+
+    @GetMapping("/profileUrl")
+    public Result<?> getProfileUrl(@RequestParam int id) {
+        Teacher teacher = teacherMapper.selectById(id);
+        return Result.success(teacher.getProfileUrl());
+    }
+
+    @GetMapping("/avatar")
+    public Result<?> getAvatar(@RequestParam int id) {
+        Teacher teacher = teacherMapper.selectById(id);
+        return Result.success(teacher.getAvatar());
+    }
 }
