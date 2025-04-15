@@ -31,6 +31,8 @@ public class Teacher {
     // created_at: timestamp，非空
     private java.sql.Timestamp createdAt;
 
+    private String avatar;  //头像
+
     // Getter and Setter for id
     public int getId() {
         return id;

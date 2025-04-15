@@ -5,10 +5,7 @@ import com.example.whucs_mentorguide.common.Result;
 import com.example.whucs_mentorguide.entity.Teacher;
 import com.example.whucs_mentorguide.mapper.TeacherMapper;
 import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -30,5 +27,17 @@ public class TeacherController {
     public Result<?> findAllTeachers() {
         List<Teacher> teachers = teacherMapper.selectList(Wrappers.emptyWrapper());
         return Result.success(teachers);
+    }
+
+    @GetMapping("/profileUrl")
+    public Result<?> getProfileUrl(@RequestParam int id) {
+        Teacher teacher = teacherMapper.selectById(id);
+        return Result.success(teacher.getProfileUrl());
+    }
+
+    @GetMapping("/avatar")
+    public Result<?> getAvatar(@RequestParam int id) {
+        Teacher teacher = teacherMapper.selectById(id);
+        return Result.success(teacher.getAvatar());
     }
 }
