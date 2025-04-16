@@ -63,8 +63,10 @@
     <el-card shadow="hover" class="teacher-card">
       <div class="teacher-header">
         <el-avatar 
-          :size="80" 
-          :src="teacher.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'"
+          :size="[120, 160]" 
+          :src="getProcessedAvatarUrl(teacher.avatar)"
+          @error="handleAvatarError"
+          class="teacher-avatar"
         ></el-avatar>
       </div>
       <div class="teacher-body">
@@ -194,6 +196,7 @@ export default {
       ],
       searchTimeout: null,
       isExactSearch: false, // 用于标记是否为精确搜索
+      imageCache: new Map(), // 用于缓存处理过的图片URL
     }
   },
   computed: {
@@ -366,6 +369,96 @@ export default {
       } catch (error) {
         this.$message.error('评价提交失败：' + error.message);
       }
+    },
+    getProcessedAvatarUrl(url) {
+      if (!url) {
+        console.log('No URL provided, using default avatar');
+        return 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
+      }
+
+      // 如果已经处理过这个URL，直接返回缓存的结果
+      if (this.imageCache.has(url)) {
+        return this.imageCache.get(url);
+      }
+
+      // 创建一个新的Image对象来加载图片
+      const img = new Image();
+      
+      // 处理跨域问题
+      img.crossOrigin = 'anonymous';
+      
+      img.onload = () => {
+        console.log('Image loaded successfully:', url);
+        console.log('Image dimensions:', img.width, 'x', img.height);
+        
+        const aspectRatio = img.width / img.height;
+        console.log('Aspect ratio:', aspectRatio);
+        
+        try {
+          // 如果是长方形图片（高度明显大于宽度）
+          if (aspectRatio < 0.8) { // 可以调整这个阈值
+            console.log('Processing rectangular image');
+            // 创建canvas来处理图片
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 设置canvas尺寸为正方形，使用较小的尺寸以提高性能
+            const size = Math.min(img.width, 300); // 限制最大尺寸
+            canvas.width = size;
+            canvas.height = size;
+            
+            // 计算裁剪参数，确保截取上半身部分
+            const sourceY = 0; // 从顶部开始
+            const sourceHeight = Math.min(img.width, img.height * 0.4); // 只取上面40%的部分
+            
+            // 绘制图片的上半部分
+            ctx.drawImage(
+              img,
+              0, sourceY, // 源图像的起始坐标
+              img.width, sourceHeight, // 源图像的裁剪尺寸
+              0, 0, // canvas的起始坐标
+              size, size // canvas的绘制尺寸
+            );
+            
+            // 将处理后的图片转换为URL，使用较高的质量
+            const processedUrl = canvas.toDataURL('image/jpeg', 0.9);
+            console.log('Image processed successfully');
+            this.imageCache.set(url, processedUrl);
+          } else {
+            console.log('Using original image (square aspect ratio)');
+            this.imageCache.set(url, url);
+          }
+          // 强制更新视图
+          this.$forceUpdate();
+        } catch (error) {
+          console.error('Image processing failed:', error);
+          console.error('Error details:', {
+            url: url,
+            width: img.width,
+            height: img.height,
+            error: error.message
+          });
+          this.imageCache.set(url, url); // 处理失败时使用原图
+          this.$forceUpdate();
+        }
+      };
+
+      img.onerror = (error) => {
+        console.error('Image failed to load:', url);
+        console.error('Error details:', error);
+        this.imageCache.set(url, url); // 加载失败时使用原图
+        this.$forceUpdate();
+      };
+
+      // 设置图片源
+      console.log('Starting to load image:', url);
+      img.src = url;
+
+      // 在图片加载完成前返回原始URL
+      return url;
+    },
+    handleAvatarError(e) {
+      console.error('Avatar error event:', e);
     }
   },
   watch: {
@@ -432,7 +525,7 @@ export default {
 
 .teacher-card {
   margin-bottom: 20px;
-  transition: transform 0.3s;
+  transition: all 0.3s ease;
   height: 100%; /* 确保卡片高度占满父容器 */
   display: flex;
   flex-direction: column; /* 让内容和按钮按列排列 */
@@ -440,16 +533,19 @@ export default {
   background-color: #fff; /* 确保卡片背景为白色 */
   border-radius: 8px; /* 可选：为卡片添加圆角 */
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1); /* 可选：为卡片添加阴影 */
+  padding: 20px;
 }
 
 .teacher-card:hover {
   transform: translateY(-5px);
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);
 }
 
 .teacher-header {
   display: flex;
   justify-content: center;
   margin-bottom: 15px;
+  height: 160px; /* 设置固定高度 */
 }
 
 .teacher-rating {
@@ -469,6 +565,7 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: flex-start; /* 确保内容从顶部开始排列 */
+  margin-top: 10px;
 }
 
 .teacher-body h3 {
@@ -564,7 +661,21 @@ export default {
   color: #909399;
   font-size: 13px;
 }
+
+.teacher-avatar {
+  border: 2px solid #eee;
+  background-color: #fff;
+  object-fit: cover;
+  width: 120px !important;  /* 覆盖el-avatar的默认样式 */
+  height: 160px !important; /* 覆盖el-avatar的默认样式 */
+  border-radius: 8px !important; /* 改为圆角矩形 */
+}
 </style> 
+
+
+
+
+
 
 
 
