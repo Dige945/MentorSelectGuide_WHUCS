@@ -73,7 +73,7 @@
         <h3>{{ teacher.name || '未知教师' }}</h3>
         <p class="teacher-department">{{ teacher.department || '未知专业' }}</p>
         <p class="teacher-title">{{ teacher.title || '未知职称' }}</p>
-        <p class="teacher-recommendcount">推荐人数: {{ teacher.recommendations || 0 }}</p>
+        <p class="teacher-recommendcount">推荐人数: {{ teacher.recommendcount || 0 }}</p>
         <div class="teacher-research">
           <h4>主要研究方向:</h4>
           <p>{{ teacher.researchArea || '暂无研究方向信息' }}</p>
