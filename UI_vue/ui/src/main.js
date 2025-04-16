@@ -5,6 +5,9 @@ import store from './store'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import AOS from 'aos'
+import 'aos/dist/aos.css'
+import VueKinesis from 'vue-kinesis'
 
 const app = createApp(App)
 
@@ -25,4 +28,6 @@ store.dispatch('checkLogin').then(isLoggedIn => {
 app.use(router)
 app.use(store)
 app.use(ElementPlus)
+app.use(VueKinesis)
+app.use(AOS.init())
 app.mount('#app')

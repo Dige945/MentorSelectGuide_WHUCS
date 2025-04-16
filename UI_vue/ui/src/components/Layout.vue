@@ -1,14 +1,25 @@
 <template>
   <div class="layout-container">
+    <!-- 动态背景 -->
+    <div class="background-animation"></div>
+
     <el-container>
       <!-- 顶部导航栏 -->
       <el-header>
-        <div class="header-container">
+        <div class="header-container glassmorphism">
           <div class="logo">
-            <h1>ChooseYourMentor_WHUCS</h1>
+            <router-link to="/" class="logo-link">
+              <h1>ChooseYourMentor_WHUCS</h1>
+            </router-link>
           </div>
           <div class="nav-menu">
-            <el-menu mode="horizontal" :ellipsis="false" router :default-active="activeMenu">
+            <el-menu 
+              mode="horizontal" 
+              :ellipsis="false" 
+              router 
+              :default-active="activeMenu"
+              class="transparent-menu"
+            >
               <el-menu-item index="/">首页</el-menu-item>
               <el-menu-item index="/teachers">导师列表</el-menu-item>
               <el-menu-item index="/research">科研方向</el-menu-item>
@@ -19,17 +30,29 @@
           </div>
           <div class="user-actions">
             <template v-if="!isLoggedIn">
-              <el-button type="primary" @click="handleLogin">登录</el-button>
-              <el-button type="success" @click="handleRegister">注册</el-button>
+              <el-button 
+                type="primary" 
+                class="gradient-button login-btn"
+                @click="handleLogin"
+              >
+                登录
+              </el-button>
+              <el-button 
+                type="success" 
+                class="gradient-button register-btn"
+                @click="handleRegister"
+              >
+                注册
+              </el-button>
             </template>
             <template v-else>
               <el-dropdown @command="handleCommand">
-                <span class="user-dropdown">
+                <span class="user-dropdown glassmorphism">
                   {{ currentUser.username }}
                   <el-icon class="el-icon--right"><arrow-down /></el-icon>
                 </span>
                 <template #dropdown>
-                  <el-dropdown-menu>
+                  <el-dropdown-menu class="custom-dropdown">
                     <el-dropdown-item command="profile">个人信息</el-dropdown-item>
                     <el-dropdown-item command="logout">退出登录</el-dropdown-item>
                   </el-dropdown-menu>
@@ -47,7 +70,7 @@
       
       <!-- 底部栏 -->
       <el-footer>
-        <div class="footer-container">
+        <div class="footer-container glassmorphism">
           <div class="footer-links">
             <div class="footer-section">
               <h4>关于我们</h4>
@@ -136,58 +159,177 @@ export default {
 </script>
 
 <style scoped>
+/* 动态背景 */
+.background-animation {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #fafafa;
+  z-index: -1;
+}
+
+.background-animation::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(0,0,0,0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: backgroundMove 30s linear infinite;
+}
+
+@keyframes backgroundMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-50%, -50%); }
+}
+
 .layout-container {
   min-height: 100vh;
+  position: relative;
+  background-color: #ffffff;
+}
+
+/* 毛玻璃效果改为简约白色 */
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .el-header {
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
   padding: 0;
+  height: auto !important;
 }
 
 .header-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 100%;
-  padding: 0 20px;
+  padding: 10px 20px;
+  border-radius: 0;
+}
+
+.logo-link {
+  text-decoration: none;
 }
 
 .logo h1 {
-  color: #409EFF;
-  font-size: 20px;
+  color: #333;
+  font-size: 24px;
   margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .nav-menu {
   flex: 1;
-  margin: 0 20px;
+  margin: 0 40px;
 }
 
+/* 透明导航菜单 */
+.transparent-menu {
+  background: transparent;
+  border: none;
+}
+
+.transparent-menu :deep(.el-menu-item) {
+  color: #666;
+  font-weight: 500;
+  font-size: 16px;
+  transition: all 0.3s;
+  height: 50px;
+  line-height: 50px;
+}
+
+.transparent-menu :deep(.el-menu-item)::before {
+  display: none;
+}
+
+.transparent-menu :deep(.el-menu-item.is-active),
+.transparent-menu :deep(.el-menu-item:hover) {
+  color: #000;
+  font-weight: 600;
+  background: transparent;
+}
+
+.transparent-menu :deep(.el-menu-item):after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #000;
+  transition: all 0.3s;
+}
+
+.transparent-menu :deep(.el-menu-item:hover):after,
+.transparent-menu :deep(.el-menu-item.is-active):after {
+  left: 15%;
+  width: 70%;
+}
+
+/* 用户操作按钮 */
 .user-actions {
   display: flex;
-  gap: 10px;
+  gap: 15px;
 }
 
+.gradient-button {
+  background: #333;
+  color: #fff;
+  border: none;
+  font-weight: 500;
+  padding: 10px 20px;
+  transition: all 0.3s;
+  border-radius: 4px;
+}
+
+.gradient-button:hover {
+  background: #000;
+  transform: translateY(-2px);
+}
+
+.user-dropdown {
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s;
+  color: #333;
+}
+
+.user-dropdown:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* 主要内容区域 */
 .el-main {
   padding: 20px 5%;
   max-width: 1400px;
   margin: 0 auto;
+  min-height: calc(100vh - 60px - 300px);
 }
 
+/* 底部栏 */
 .el-footer {
-  background-color: #303133;
-  color: #fff;
+  background: transparent;
   padding: 40px 20px 20px;
+  height: auto !important;
 }
 
 .footer-container {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 40px;
+  border-radius: 8px;
 }
 
 .footer-links {
@@ -204,32 +346,51 @@ export default {
 
 .footer-section h4 {
   margin-bottom: 15px;
-  font-size: 18px;
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
 }
 
 .footer-section ul {
   list-style: none;
+  padding: 0;
 }
 
 .footer-section li {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .footer-section a {
-  color: #c0c4cc;
+  color: #666;
   text-decoration: none;
-  transition: color 0.3s;
+  transition: all 0.3s;
 }
 
 .footer-section a:hover {
-  color: #409EFF;
+  color: #000;
 }
 
 .copyright {
   text-align: center;
-  border-top: 1px solid #606266;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
   padding-top: 20px;
-  color: #909399;
+  color: #666;
+}
+
+/* 自定义下拉菜单 */
+:deep(.custom-dropdown) {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-dropdown-menu__item) {
+  color: #666;
+}
+
+:deep(.el-dropdown-menu__item:hover) {
+  background: rgba(0, 0, 0, 0.05);
+  color: #000;
 }
 
 /* 响应式设计 */
@@ -247,17 +408,30 @@ export default {
   .footer-links {
     flex-direction: column;
   }
+  
+  .footer-section {
+    width: 100%;
+    text-align: center;
+  }
+
+  .transparent-menu :deep(.el-menu-item) {
+    justify-content: center;
+  }
 }
 
-.user-dropdown {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: #303133;
-  font-size: 14px;
+/* 覆盖 Element Plus 默认的蓝色下划线 */
+.transparent-menu :deep(.el-menu-item.is-active) {
+  border-bottom: none !important;
 }
 
-.user-dropdown .el-icon--right {
-  margin-left: 5px;
+.transparent-menu :deep(.el-menu--horizontal) {
+  border-bottom: none;
+}
+
+/* 确保我们自定义的黑色下划线样式正确显示 */
+.transparent-menu :deep(.el-menu-item.is-active):after {
+  left: 15%;
+  width: 70%;
+  background: #000;
 }
 </style> 

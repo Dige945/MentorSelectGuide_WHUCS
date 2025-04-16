@@ -9,12 +9,15 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@vueuse/core": "^10.7.0",
     "axios": "^1.8.4",
     "core-js": "^3.8.3",
     "element-plus": "^2.9.7",
+    "gsap": "^3.12.3",
     "marked": "^15.0.8",
     "vue": "^3.2.13",
     "vue-router": "^4.5.0",
+    "vue-kinesis": "^2.0.5",
     "vuex": "^4.0.2"
   },
   "devDependencies": {

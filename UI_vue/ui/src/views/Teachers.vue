@@ -73,7 +73,27 @@
         <h3>{{ teacher.name || '未知教师' }}</h3>
         <p class="teacher-department">{{ teacher.department || '未知专业' }}</p>
         <p class="teacher-title">{{ teacher.title || '未知职称' }}</p>
-        <p class="teacher-recommendcount">推荐人数: {{ teacher.recommendcount || 0 }}</p>
+        
+        <!-- 新的推荐人数显示 -->
+        <div class="recommend-stats">
+          <div class="recommend-count">
+            <div class="count-circle" :class="getRecommendClass(teacher.recommendcount)">
+              <span class="count-number">{{ teacher.recommendcount || 0 }}</span>
+              <span class="count-label">推荐</span>
+            </div>
+          </div>
+          <div class="recommend-trend" v-if="teacher.recommendcount > 0">
+            <el-tooltip 
+              :content="getRecommendTip(teacher.recommendcount)"
+              placement="top"
+            >
+              <div class="trend-icon" :class="getRecommendTrendClass(teacher.recommendcount)">
+                <el-icon><TrendCharts /></el-icon>
+              </div>
+            </el-tooltip>
+          </div>
+        </div>
+
         <div class="teacher-research">
           <h4>主要研究方向:</h4>
           <p>{{ teacher.researchArea || '暂无研究方向信息' }}</p>
@@ -154,13 +174,16 @@
 
 <script>
 import axios from "axios";
-import { Search } from '@element-plus/icons-vue'
+import { Search, TrendCharts } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 
 export default {
   name: 'TeachersView',
   components: {
-    Search
+    Search,
+    TrendCharts
   },
   data() {
     return {
@@ -459,6 +482,26 @@ export default {
     },
     handleAvatarError(e) {
       console.error('Avatar error event:', e);
+    },
+    getRecommendClass(count) {
+      if (count >= 100) return 'count-excellent'
+      if (count >= 50) return 'count-great'
+      if (count >= 20) return 'count-good'
+      return 'count-normal'
+    },
+    
+    getRecommendTrendClass(count) {
+      if (count >= 100) return 'trend-excellent'
+      if (count >= 50) return 'trend-great'
+      if (count >= 20) return 'trend-good'
+      return 'trend-normal'
+    },
+    
+    getRecommendTip(count) {
+      if (count >= 100) return '极受欢迎的导师'
+      if (count >= 50) return '深受学生喜爱'
+      if (count >= 20) return '评价良好'
+      return '暂无明显趋势'
     }
   },
   watch: {
@@ -469,206 +512,553 @@ export default {
       },
       immediate: true
     }
+  },
+  mounted() {
+    AOS.init({
+      duration: 800,
+      offset: 100,
+      once: true
+    });
+  },
+  updated() {
+    AOS.refresh();
   }
 }
 </script>
 
 <style scoped>
+.teachers-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  animation: fadeIn 0.8s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-title {
+  font-size: 2.5em;
+  margin-bottom: 30px;
+  color: #333;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-title::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #333;
+  transform: translateX(-50%);
+  animation: titleLine 1s ease forwards 0.5s;
+}
+
+@keyframes titleLine {
+  to {
+    width: 100px;
+  }
+}
+
+.filter-container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
+}
+
+.filter-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent);
+  animation: filterLine 2s infinite;
+}
+
+@keyframes filterLine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .search-box {
   display: flex;
   gap: 10px;
+  position: relative;
 }
 
 .search-input {
   flex: 1;
 }
 
-.suggestion-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px 0;
+.search-input :deep(.el-input__inner) {
+  transition: all 0.3s ease;
 }
 
-.suggestion-detail {
-  font-size: 12px;
-  color: #909399;
+.search-input :deep(.el-input__inner:focus) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
-.el-col {
-  display: flex;
-  flex-direction: column; /* 让子元素按列排列 */
-  height: 100%; /* 确保列的高度占满父容器 */
+.search-button {
+  background: #333;
+  border: none;
+  padding: 12px 24px;
+  transition: all 0.3s;
 }
 
-.teachers-container {
-  padding: 20px 0;
-}
-
-.page-title {
-  font-size: 24px;
-  margin-bottom: 20px;
-  color: #303133;
-}
-
-.filter-container {
-  background-color: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-.teachers-list {
-  margin-top: 20px;
+.search-button:hover {
+  background: #000;
+  transform: translateY(-2px);
 }
 
 .teacher-card {
-  margin-bottom: 20px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
   transition: all 0.3s ease;
-  height: 100%; /* 确保卡片高度占满父容器 */
-  display: flex;
-  flex-direction: column; /* 让内容和按钮按列排列 */
-  justify-content: space-between; /* 确保内容和按钮之间有足够的空间 */
-  background-color: #fff; /* 确保卡片背景为白色 */
-  border-radius: 8px; /* 可选：为卡片添加圆角 */
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1); /* 可选：为卡片添加阴影 */
-  padding: 20px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  animation: fadeIn 0.8s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .teacher-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .teacher-header {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 15px;
-  height: 160px; /* 设置固定高度 */
-}
-
-.teacher-rating {
-  margin-top: 10px;
   text-align: center;
+  padding: 20px;
+  background: #f8f8f8;
+  transition: all 0.3s ease;
 }
 
-.review-count {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 5px;
-  display: block;
+.teacher-card:hover .teacher-header {
+  background: #f0f0f0;
+}
+
+/* 修改头像样式为长方形 */
+:deep(.teacher-avatar) {
+  width: 120px !important;
+  height: 160px !important;
+  border-radius: 4px !important;
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.teacher-card:hover .teacher-avatar {
+  transform: scale(1.05);
 }
 
 .teacher-body {
-  flex: 1; /* 让内容区域占据剩余空间 */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start; /* 确保内容从顶部开始排列 */
-  margin-top: 10px;
+  padding: 20px;
 }
 
 .teacher-body h3 {
-  text-align: center;
   margin: 0 0 10px;
+  color: #333;
   font-size: 18px;
+  font-weight: 600;
 }
 
-.teacher-department, .teacher-title {
-  text-align: center;
-  color: #606266;
+.teacher-department {
+  color: #666;
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.teacher-title {
+  color: #333;
+  margin: 5px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.teacher-recommendcount {
+  color: #666;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.teacher-research {
+  margin: 15px 0;
+}
+
+.teacher-research h4 {
+  color: #333;
   margin: 0 0 5px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.teacher-research p {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .teacher-tags {
+  margin-top: 15px;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  margin: 10px 0;
+  gap: 8px;
 }
 
 .teacher-tag {
-  margin: 3px;
+  background: #f5f5f5;
+  border: none;
+  color: #666;
+  transition: all 0.3s ease;
 }
 
-.teacher-courses {
-  margin-top: 10px;
-}
-
-.teacher-courses h4 {
-  font-size: 14px;
-  color: #606266;
-  margin-bottom: 5px;
-}
-
-.teacher-courses p {
-  color: #909399;
-  font-size: 13px;
+.teacher-tag:hover {
+  transform: translateY(-2px);
+  background: #333 !important;
+  color: white !important;
 }
 
 .teacher-footer {
+  padding: 15px 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: space-between;
-  padding: 10px 15px; /* 添加内边距 */
-  background-color: #fff; /* 确保按钮区域背景与卡片一致 */
-  border-top: 1px solid #ebeef5; /* 添加顶部边框以区分内容和按钮 */
-  margin-top: auto; /* 将按钮区域推到卡片底部 */
+}
+
+.teacher-footer :deep(.el-button) {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.teacher-footer :deep(.el-button--primary) {
+  background: #333;
+  border: none;
+}
+
+.teacher-footer :deep(.el-button--primary)::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.teacher-footer :deep(.el-button--primary:hover)::before {
+  width: 300px;
+  height: 300px;
+}
+
+.teacher-footer :deep(.el-button--link) {
+  color: #666;
+}
+
+.teacher-footer :deep(.el-button--link:hover) {
+  color: #333;
 }
 
 .pagination-container {
   margin-top: 30px;
+  text-align: center;
+}
+
+.pagination-container :deep(.el-pagination__total),
+.pagination-container :deep(.el-pagination__jump) {
+  transition: all 0.3s ease;
+}
+
+.pagination-container :deep(.el-pager li) {
+  transition: all 0.3s ease;
+}
+
+.pagination-container :deep(.el-pager li:hover) {
+  transform: translateY(-2px);
+}
+
+.pagination-container :deep(.el-pager li.active) {
+  animation: bounce 0.3s ease;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* 搜索建议样式 */
+.suggestion-item {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+}
+
+.suggestion-detail {
+  font-size: 12px;
+  color: #666;
+}
+
+/* 评价对话框样式 */
+.review-form {
+  padding: 20px;
+  animation: dialogPop 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes dialogPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.review-form h3 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .filter-container {
+    padding: 15px;
+  }
+  
+  .search-box {
+    flex-direction: column;
+  }
+  
+  .teacher-card {
+    margin: 10px;
+  }
+}
+
+/* Element Plus 组件样式覆盖 */
+:deep(.el-select) {
+  width: 100%;
+}
+
+:deep(.el-pagination) {
   justify-content: center;
 }
 
-.crawl-button {
-  margin-left: 16px;
+:deep(.el-empty) {
+  padding: 40px 0;
 }
 
-.review-form {
-  padding: 20px;
-}
-
-.rating-text {
-  margin-left: 10px;
-  color: #ff9900;
-  font-size: 16px;
-}
-
-.dialog-footer {
+/* 添加新的样式 */
+.recommend-stats {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  margin: 15px 0;
   gap: 10px;
 }
 
-.teacher-recommendations {
-  text-align: center;
-  color: #606266;
-  margin: 5px 0;
+.recommend-count {
+  position: relative;
 }
 
-.teacher-research {
-  margin-top: 10px;
+.count-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #f5f7fa;
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.teacher-research h4 {
-  font-size: 14px;
-  color: #606266;
-  margin-bottom: 5px;
+.count-circle:hover {
+  transform: scale(1.05);
 }
 
-.teacher-research p {
+.count-number {
+  font-size: 24px;
+  font-weight: bold;
+  line-height: 1;
+  background: linear-gradient(45deg, #333, #666);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.count-label {
+  font-size: 12px;
   color: #909399;
-  font-size: 13px;
+  margin-top: 4px;
 }
 
-.teacher-avatar {
-  border: 2px solid #eee;
-  background-color: #fff;
-  object-fit: cover;
-  width: 120px !important;  /* 覆盖el-avatar的默认样式 */
-  height: 160px !important; /* 覆盖el-avatar的默认样式 */
-  border-radius: 8px !important; /* 改为圆角矩形 */
+/* 不同等级的样式 */
+.count-excellent {
+  background: linear-gradient(135deg, #ffd700, #ffa500);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+}
+
+.count-excellent .count-number {
+  background: linear-gradient(45deg, #fff, #fff8dc);
+  -webkit-background-clip: text;
+}
+
+.count-excellent .count-label {
+  color: #fff;
+}
+
+.count-great {
+  background: linear-gradient(135deg, #87ceeb, #4169e1);
+  box-shadow: 0 4px 12px rgba(135, 206, 235, 0.2);
+}
+
+.count-great .count-number {
+  background: linear-gradient(45deg, #fff, #f0f8ff);
+  -webkit-background-clip: text;
+}
+
+.count-great .count-label {
+  color: #fff;
+}
+
+.count-good {
+  background: linear-gradient(135deg, #98fb98, #3cb371);
+  box-shadow: 0 4px 12px rgba(152, 251, 152, 0.2);
+}
+
+.count-good .count-number {
+  background: linear-gradient(45deg, #fff, #f0fff0);
+  -webkit-background-clip: text;
+}
+
+.count-good .count-label {
+  color: #fff;
+}
+
+.count-normal {
+  background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 趋势图标样式 */
+.recommend-trend {
+  display: flex;
+  align-items: center;
+}
+
+.trend-icon {
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.trend-icon:hover {
+  transform: translateY(-2px);
+}
+
+.trend-excellent {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.trend-great {
+  color: #4169e1;
+  background: rgba(65, 105, 225, 0.1);
+}
+
+.trend-good {
+  color: #3cb371;
+  background: rgba(60, 179, 113, 0.1);
+}
+
+.trend-normal {
+  color: #909399;
+  background: rgba(144, 147, 153, 0.1);
+}
+
+/* 添加动画效果 */
+@keyframes countPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.count-circle {
+  animation: countPulse 2s infinite;
+}
+
+.count-excellent {
+  animation: countPulse 2s infinite, shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 确保渐变背景可以动画 */
+.count-excellent,
+.count-great,
+.count-good {
+  background-size: 200% 200%;
 }
 </style> 
 

@@ -1,16 +1,23 @@
 <template>
   <div class="home-container">
+    <!-- 动态背景 -->
+    <div class="background-animation"></div>
+    
     <!-- 顶部横幅 -->
     <div class="hero-section">
-      <div class="hero-content">
-        <h1>武汉大学计算机学院导师推荐系统</h1>
-        <p>发现最适合您的研究导师，开启科研之旅</p>
-      </div>
+      <kinesis-container>
+        <kinesis-element :strength="20" type="depth">
+          <div class="hero-content" data-aos="fade-up">
+            <h1>武汉大学计算机学院导师推荐系统</h1>
+            <p class="gradient-text">发现最适合您的研究导师，开启科研之旅</p>
+          </div>
+        </kinesis-element>
+      </kinesis-container>
     </div>
 
     <!-- 搜索框部分 -->
-    <div class="search-section">
-      <div class="search-container">
+    <div class="search-section" data-aos="fade-up" data-aos-delay="200">
+      <div class="search-container glassmorphism">
         <el-input
           v-model="searchKeyword"
           placeholder="搜索导师姓名或研究方向"
@@ -19,12 +26,12 @@
           clearable
         >
           <template #prefix>
-            <el-icon><Search /></el-icon>
+            <el-icon class="search-icon"><Search /></el-icon>
           </template>
         </el-input>
         
         <!-- 搜索结果下拉框 -->
-        <div v-if="searchResults.length > 0" class="search-results">
+        <div v-if="searchResults.length > 0" class="search-results glassmorphism">
           <div 
             v-for="teacher in searchResults" 
             :key="teacher.id" 
@@ -40,6 +47,7 @@
               v-if="hoveredTeacherId === teacher.id"
               type="primary" 
               size="small"
+              class="view-button"
               @click="openTeacherProfile(teacher)"
             >
               查看主页
@@ -49,31 +57,21 @@
       </div>
     </div>
 
-    <!-- 统计数据展示 -->
-    <div class="stats-section">
-      <div class="stat-card">
-        <el-icon><User /></el-icon>
-        <div class="stat-number">50+</div>
-        <div class="stat-label">优秀导师</div>
-      </div>
-      <div class="stat-card">
-        <el-icon><Collection /></el-icon>
-        <div class="stat-number">10+</div>
-        <div class="stat-label">研究方向</div>
-      </div>
-      <div class="stat-card">
-        <el-icon><Medal /></el-icon>
-        <div class="stat-number">100+</div>
-        <div class="stat-label">成功案例</div>
-      </div>
-    </div>
+<!--    &lt;!&ndash; 统计数据展示 &ndash;&gt;-->
+<!--    <div class="stats-section" data-aos="fade-up" data-aos-delay="400">-->
+<!--      <div class="stat-card glassmorphism" v-for="(stat, index) in stats" :key="index">-->
+<!--        <el-icon class="stat-icon"><component :is="stat.icon" /></el-icon>-->
+<!--        <div class="stat-number">{{ stat.number }}</div>-->
+<!--        <div class="stat-label">{{ stat.label }}</div>-->
+<!--      </div>-->
+<!--    </div>-->
 
     <!-- 主要内容区域 -->
     <div class="main-content">
       <!-- 热门导师推荐 -->
       <div class="section-container">
         <div class="section-header">
-          <h2>热门导师</h2>
+          <h2 class="gradient-text">热门导师</h2>
         </div>
         <HotTeachers />
       </div>
@@ -83,21 +81,21 @@
 
 <script>
 import { ref, onMounted } from 'vue'
-import { Search, User, Collection, Medal, ArrowRight } from '@element-plus/icons-vue'
-import request from '@/utils/request'
+import { Search, User, Collection, Medal } from '@element-plus/icons-vue'
+import { useElementSize } from '@vueuse/core'
+import gsap from 'gsap'
 import HotTeachers from '@/components/HotTeachers.vue'
-import ResearchAreas from '@/components/ResearchAreas.vue'
+import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'Home',
   components: {
     HotTeachers,
-    ResearchAreas,
     Search,
     User,
     Collection,
-    Medal,
-    ArrowRight
+    Medal
   },
   setup() {
     const searchKeyword = ref('')
@@ -143,6 +141,31 @@ export default {
       }
     }
 
+    const stats = ref([
+      { icon: 'User', number: '50+', label: '优秀导师' },
+      { icon: 'Collection', number: '10+', label: '研究方向' },
+      { icon: 'Medal', number: '100+', label: '成功案例' }
+    ])
+
+    onMounted(() => {
+      // 添加数字增长动画
+      stats.value.forEach((stat, index) => {
+        const num = parseInt(stat.number)
+        gsap.from(`stat-number-${index}`, {
+          textContent: 0,
+          duration: 2,
+          ease: "power1.out",
+          snap: { textContent: 1 },
+          stagger: {
+            each: 0.2,
+            onUpdate: function() {
+              this.targets()[0].innerHTML = Math.ceil(this.targets()[0].textContent) + '+'
+            },
+          }
+        })
+      })
+    })
+
     return {
       searchKeyword,
       searchResults,
@@ -150,7 +173,8 @@ export default {
       handleSearch,
       showButton,
       hideButton,
-      openTeacherProfile
+      openTeacherProfile,
+      stats
     }
   }
 }
@@ -159,31 +183,62 @@ export default {
 <style scoped>
 .home-container {
   min-height: 100vh;
-  background-color: #f8f9fa;
+  background-color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+.background-animation {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #fafafa;
+  z-index: 0;
+}
+
+.background-animation::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(0,0,0,0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: backgroundMove 30s linear infinite;
+}
+
+@keyframes backgroundMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-50%, -50%); }
+}
+
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .hero-section {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-  padding: 80px 20px;
+  background: transparent;
+  padding: 100px 20px;
   text-align: center;
-  color: white;
-  margin-bottom: 40px;
+  color: #333;
+  position: relative;
+  z-index: 1;
 }
 
-.hero-content {
-  max-width: 800px;
-  margin: 0 auto;
+.gradient-text {
+  color: #666;
+  font-weight: 500;
 }
 
 .hero-content h1 {
-  font-size: 2.5em;
+  font-size: 3em;
   margin-bottom: 20px;
-  font-weight: 600;
-}
-
-.hero-content p {
-  font-size: 1.2em;
-  opacity: 0.9;
+  font-weight: 700;
+  color: #333;
 }
 
 .search-section {
@@ -191,36 +246,62 @@ export default {
   max-width: 600px;
   padding: 0 20px;
   position: relative;
-  z-index: 10;
+  z-index: 2;
 }
 
 .search-container {
-  background: white;
+  position: relative;
   padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .search-input {
   width: 100%;
 }
 
+.search-input :deep(.el-input__wrapper) {
+  background: #fff;
+  box-shadow: none !important;
+  border: 1px solid #eee;
+}
+
+.search-input :deep(.el-input__inner) {
+  color: #333;
+  font-size: 16px;
+  height: 50px;
+}
+
+.search-input :deep(.el-input__inner::placeholder) {
+  color: #999;
+}
+
+.search-icon {
+  color: #666;
+  font-size: 20px;
+}
+
 .search-results {
-  margin-top: 10px;
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
   max-height: 300px;
   overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #eee;
 }
 
 .search-result-item {
-  padding: 12px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 15px 20px;
   border-bottom: 1px solid #eee;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
 }
 
 .search-result-item:last-child {
@@ -228,113 +309,111 @@ export default {
 }
 
 .search-result-item:hover {
-  background-color: #f5f7fa;
+  background: #f9f9f9;
 }
 
 .teacher-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .teacher-name {
-  font-weight: 500;
   color: #333;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .teacher-title {
-  font-size: 0.9em;
   color: #666;
+  font-size: 14px;
 }
 
-.stats-section {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  margin: 40px auto;
-  max-width: 1200px;
-  padding: 0 20px;
+.view-button {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  transition: all 0.3s ease;
 }
 
-.stat-card {
-  background: white;
-  padding: 24px;
-  border-radius: 12px;
-  text-align: center;
-  flex: 1;
-  max-width: 200px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s;
+.view-button:hover {
+  background: #000;
+  transform: translateY(-2px);
 }
 
-.stat-card:hover {
-  transform: translateY(-5px);
+/* 自定义滚动条样式 */
+.search-results::-webkit-scrollbar {
+  width: 6px;
 }
 
-.stat-card .el-icon {
-  font-size: 2em;
-  color: var(--el-color-primary);
-  margin-bottom: 12px;
+.search-results::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
 }
 
-.stat-number {
-  font-size: 1.8em;
-  font-weight: 600;
-  color: #333;
-  margin: 8px 0;
+.search-results::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
 }
 
-.stat-label {
-  color: #666;
-  font-size: 1em;
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
 }
 
+/* 主要内容区域样式 */
 .main-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+  padding: 40px 0;
+  position: relative;
+  z-index: 1;
 }
 
 .section-container {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 .section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  text-align: center;
+  margin-bottom: 40px;
 }
 
 .section-header h2 {
-  font-size: 1.5em;
-  color: #333;
+  font-size: 2.5em;
   margin: 0;
+  padding: 0;
+  color: #333;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .hero-section {
-    padding: 60px 20px;
-  }
-
   .hero-content h1 {
     font-size: 2em;
   }
+}
 
-  .stats-section {
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-  }
+/* 添加一些微动画 */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
 
-  .stat-card {
-    width: 100%;
-    max-width: none;
+.search-container {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* 添加鼠标悬停效果 */
+.view-button {
+  background: #333;
+  border: none;
+  transition: transform 0.3s ease, background 0.3s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    background: #000;
   }
 }
 </style> 
