@@ -15,13 +15,24 @@ public class TeacherController {
     @Resource
     TeacherMapper teacherMapper;
 
-    @GetMapping("/person")
-    public Result<?> findByName(@PathVariable Integer name){
-//        System.out.println(id);
-        Teacher teacher = teacherMapper.selectById(name);
-//        System.out.println(user);
+    @GetMapping("/{id}")        //根据老师id查找老师
+    public Result<?> findById(@PathVariable Integer id){
+        Teacher teacher = teacherMapper.selectById(id);
         return Result.success(teacher);
     }
+
+    //根据老师名字查找老师
+    @GetMapping("/name/{name}")     //根据老师名字查找老师
+    public Result<?> findByName(@PathVariable String name){
+        Teacher teacher = teacherMapper.selectOne(Wrappers.<Teacher>lambdaQuery().eq(Teacher::getName, name));
+        return Result.success(teacher);
+    }
+
+//    @GetMapping("/person")
+//    public Result<?> findByName(@PathVariable Integer id){
+//        Teacher teacher = teacherMapper.selectById(id);
+//        return Result.success(teacher);
+//    }
 
     @GetMapping("/all")
     public Result<?> findAllTeachers() {
@@ -49,13 +60,13 @@ public class TeacherController {
         return Result.success(teachers);
     }
 
-    @GetMapping("/profileUrl")
+    @GetMapping("/profileUrl/{id}")
     public Result<?> getProfileUrl(@RequestParam int id) {
         Teacher teacher = teacherMapper.selectById(id);
         return Result.success(teacher.getProfileUrl());
     }
 
-    @GetMapping("/avatar")
+    @GetMapping("/avatar/{id}")
     public Result<?> getAvatar(@RequestParam int id) {
         Teacher teacher = teacherMapper.selectById(id);
         return Result.success(teacher.getAvatar());
