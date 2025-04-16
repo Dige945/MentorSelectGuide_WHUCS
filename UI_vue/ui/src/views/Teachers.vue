@@ -2,15 +2,32 @@
   <div class="teachers-container">
     <h1 class="page-title">教师列表</h1>
     
-    <div class="filter-container">
+    <div class="filter-container" style="width: 1250px;">
       <el-row :gutter="20">
         <el-col :span="6">
-          <el-input
-            v-model="searchQuery"
-            placeholder="搜索教师名称"
-            prefix-icon="Search"
-            clearable
-          />
+          <div class="search-box">
+            <el-autocomplete
+              v-model="searchQuery"
+              :fetch-suggestions="querySearchAsync"
+              placeholder="搜索教师名称"
+              clearable
+              class="search-input"
+              @select="handleSelect"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+              <template #default="{ item }">
+                <div class="suggestion-item">
+                  <span>{{ item.name }}</span>
+                  <span class="suggestion-detail">{{ item.title }} | {{ item.department }}</span>
+                </div>
+              </template>
+            </el-autocomplete>
+            <el-button type="primary" @click="handleSearch" class="search-button">
+              搜索
+            </el-button>
+          </div>
         </el-col>
         <el-col :span="6">
           <el-select v-model="selectedDepartment" placeholder="选择专业" clearable style="width: 100%">
@@ -24,34 +41,40 @@
         </el-col>
         <el-col :span="6">
           <el-select v-model="sortBy" placeholder="排序方式" style="width: 100%">
-            <el-option label="综合评分从高到低" value="rating-desc" />
-            <el-option label="综合评分从低到高" value="rating-asc" />
-            <el-option label="评价数量从多到少" value="reviews-desc" />
-            <el-option label="评价数量从少到多" value="reviews-asc" />
+            <el-option label="推荐人数从多到少" value="recommendcount-desc" />
+            <el-option label="推荐人数从少到多" value="recommendcount-asc" />
           </el-select>
         </el-col>
         <el-col :span="6">
-          <el-button type="primary" @click="handleSearch">筛选</el-button>
           <el-button @click="resetFilters">重置</el-button>
         </el-col>
       </el-row>
     </div>
+
+    <!-- 搜索结果为空时的提示 -->
+    <el-empty
+      v-if="filteredTeachers.length === 0"
+      description="未找到相关导师"
+    />
     
     <div class="teachers-list">
       <el-row :gutter="20">
   <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="teacher in paginatedTeachers" :key="teacher.id">
     <el-card shadow="hover" class="teacher-card">
       <div class="teacher-header">
-        <el-avatar :size="80" :src="teacher.avatar || '默认头像URL'"></el-avatar>
+        <el-avatar 
+          :size="80" 
+          :src="teacher.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'"
+        ></el-avatar>
       </div>
       <div class="teacher-body">
         <h3>{{ teacher.name || '未知教师' }}</h3>
         <p class="teacher-department">{{ teacher.department || '未知专业' }}</p>
         <p class="teacher-title">{{ teacher.title || '未知职称' }}</p>
-        <p class="teacher-recommendations">推荐人数: {{ teacher.recommendations || 0 }}</p>
+        <p class="teacher-recommendcount">推荐人数: {{ teacher.recommendations || 0 }}</p>
         <div class="teacher-research">
           <h4>主要研究方向:</h4>
-          <p>{{ teacher.researchAreas || '暂无研究方向信息' }}</p>
+          <p>{{ teacher.researchArea || '暂无研究方向信息' }}</p>
         </div>
         <div class="teacher-tags">
           <el-tag v-for="tag in teacher.tags || []" :key="tag" size="small" type="info" effect="plain" class="teacher-tag">
@@ -61,7 +84,7 @@
       </div>
       <div class="teacher-footer">
       <el-button type="link" @click="viewTeacherDetail(teacher.id)">查看详情</el-button>
-      <el-button type="primary" @click="showReviewDialog(teacher)">评价</el-button>
+      <el-button type="primary" @click="showReviewDialog(teacher)">写推荐</el-button>
     </div>
     </el-card>
     
@@ -90,20 +113,12 @@
       <div class="review-form">
         <h3>{{ currentTeacher?.name }}</h3>
         <el-form :model="reviewForm" label-width="80px">
-          <el-form-item label="评分">
-            <el-rate
-              v-model="reviewForm.rating"
-              :colors="['#99A9BF', '#F7BA2A', '#FF9900']"
-              show-text
-            />
-            <span class="rating-text">{{ reviewForm.rating }}分</span>
-          </el-form-item>
-          <el-form-item label="评价内容">
+          <el-form-item label="推荐内容">
             <el-input
               v-model="reviewForm.content"
               type="textarea"
               :rows="4"
-              placeholder="请输入您的评价内容"
+              placeholder="请输入您的推荐内容"
             />
           </el-form-item>
           <el-form-item label="标签">
@@ -137,14 +152,19 @@
 
 <script>
 import axios from "axios";
+import { Search } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'TeachersView',
+  components: {
+    Search
+  },
   data() {
     return {
       searchQuery: this.$route.query.search || '',
       selectedDepartment: '',
-      sortBy: 'rating-desc',
+      sortBy: 'recommendcount-desc', // 默认按推荐人数从多到少排序
       currentPage: 1,
       pageSize: 12,
       totalTeachers: 100,
@@ -171,7 +191,9 @@ export default {
         '专业知识扎实',
         '循循善诱',
         '板书工整'
-      ]
+      ],
+      searchTimeout: null,
+      isExactSearch: false, // 用于标记是否为精确搜索
     }
   },
   computed: {
@@ -186,32 +208,34 @@ export default {
     filteredTeachers() {
       let result = [...this.teachers];
       
-      // 按学院筛选
-      if (this.selectedDepartment) {
-        result = result.filter(teacher => teacher.department === this.selectedDepartment);
-      }
-      
-      // 搜索筛选
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase();
+      if (this.isExactSearch && this.searchQuery) {
+        // 精确搜索模式
         result = result.filter(teacher => 
-          teacher.name.toLowerCase().includes(query) || 
-          teacher.courses.some(course => course.toLowerCase().includes(query))
+          teacher.name.toLowerCase() === this.searchQuery.toLowerCase()
         );
+      } else {
+        // 普通筛选模式
+        if (this.searchQuery) {
+          const query = this.searchQuery.toLowerCase();
+          result = result.filter(teacher => 
+            teacher.name.toLowerCase().includes(query) ||
+            (teacher.department && teacher.department.toLowerCase().includes(query)) ||
+            (teacher.researchArea && teacher.researchArea.toLowerCase().includes(query))
+          );
+        }
+        
+        if (this.selectedDepartment) {
+          result = result.filter(teacher => teacher.department === this.selectedDepartment);
+        }
       }
       
       // 排序
-      if (this.sortBy === 'rating-desc') {
-        result.sort((a, b) => b.rating - a.rating);
-      } else if (this.sortBy === 'rating-asc') {
-        result.sort((a, b) => a.rating - b.rating);
-      } else if (this.sortBy === 'reviews-desc') {
-        result.sort((a, b) => b.reviewCount - a.reviewCount);
-      } else if (this.sortBy === 'reviews-asc') {
-        result.sort((a, b) => a.reviewCount - b.reviewCount);
+      if (this.sortBy === 'recommendcount-desc') {
+        result.sort((a, b) => (b.recommendcount || 0) - (a.recommendcount || 0));
+      } else if (this.sortBy === 'recommendcount-asc') {
+        result.sort((a, b) => (a.recommendcount || 0) - (b.recommendcount || 0));
       }
       
-      console.log('Filtered Teachers:', result); // 调试日志
       return result;
     }
   },
@@ -222,19 +246,18 @@ export default {
     async fetchTeachers() {
       try {
         const response = await axios.get('/api/teachers/all');
-        console.log('教师数据:', response.data); // 调试日志
         if (response.data.code === '0') {
           this.teachers = response.data.data.map(teacher => ({
             id: teacher.id,
             name: teacher.name,
             department: teacher.department,
             title: teacher.title,
-            avatar: teacher.profileUrl || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
+            avatar: teacher.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png',
             tags: teacher.tags || [],
-            recommendations: teacher.recommendcount || 0, // 推荐人数
-            researchAreas: teacher.researchArea || []    // 主要研究方向
+            recommendcount: teacher.recommendcount || 0,
+            researchArea: teacher.researchArea || '暂无研究方向信息'
           }));
-          console.log('教师数据:', this.teachers); // 调试日志
+          
           // 动态生成院系筛选选项
           const departments = [...new Set(this.teachers.map(t => t.department))];
           this.departments = departments.map(d => ({ value: d, label: d }));
@@ -246,18 +269,55 @@ export default {
         this.$message.error('数据加载失败');
       }
     },
-    handleSearch() {
-      // 在实际应用中，这里可能需要从后端获取数据
-      console.log('Searching with:', {
-        query: this.searchQuery,
-        department: this.selectedDepartment,
-        sortBy: this.sortBy
-      })
+    querySearchAsync(queryString, cb) {
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+      }
+      
+      this.searchTimeout = setTimeout(() => {
+        const results = queryString
+          ? this.teachers.filter(teacher => 
+              teacher.name.toLowerCase().includes(queryString.toLowerCase())
+            )
+          : [];
+        
+        // 将结果格式化为建议列表格式
+        const suggestions = results.map(teacher => ({
+          value: teacher.name,
+          ...teacher
+        }));
+        
+        cb(suggestions);
+      }, 300);
     },
+    
+    handleSelect(item) {
+      this.searchQuery = item.name;
+      this.isExactSearch = true;
+      this.handleSearch();
+    },
+    
+    handleSearch() {
+      this.isExactSearch = true;
+      this.currentPage = 1;
+      
+      if (!this.searchQuery) {
+        ElMessage.warning('请输入要搜索的教师姓名');
+        return;
+      }
+      
+      const results = this.filteredTeachers;
+      if (results.length === 0) {
+        ElMessage.warning('未找到该导师');
+      }
+    },
+    
     resetFilters() {
-      this.searchQuery = ''
-      this.selectedDepartment = ''
-      this.sortBy = 'rating-desc'
+      this.searchQuery = '';
+      this.selectedDepartment = '';
+      this.sortBy = 'recommendcount-desc';
+      this.isExactSearch = false;
+      this.currentPage = 1;
     },
     handleSizeChange(val) {
       this.pageSize = val
@@ -321,6 +381,27 @@ export default {
 </script>
 
 <style scoped>
+.search-box {
+  display: flex;
+  gap: 10px;
+}
+
+.search-input {
+  flex: 1;
+}
+
+.suggestion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+}
+
+.suggestion-detail {
+  font-size: 12px;
+  color: #909399;
+}
+
 .el-col {
   display: flex;
   flex-direction: column; /* 让子元素按列排列 */
@@ -367,8 +448,7 @@ export default {
 
 .teacher-header {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: center;
   margin-bottom: 15px;
 }
 
@@ -485,3 +565,7 @@ export default {
   font-size: 13px;
 }
 </style> 
+
+
+
+

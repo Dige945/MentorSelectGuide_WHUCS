@@ -34,6 +34,14 @@ public class Teacher {
     // created_at: timestamp，非空
     private java.sql.Timestamp createdAt;
 
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
+
     private String avatar;  //头像
 
     // Getter and Setter for id
