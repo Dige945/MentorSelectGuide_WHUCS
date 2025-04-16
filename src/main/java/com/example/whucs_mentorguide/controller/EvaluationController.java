@@ -22,7 +22,7 @@ public class EvaluationController {
         return Result.success();
     }
 
-    @GetMapping("/item")        //根据id查询评价
+    @GetMapping("/item/{id}")        //根据id查询评价
     public Result<?> findByID(@PathVariable Integer id){
         Evaluation item = evaluationMapper.selectById(id);
         return Result.success(item);
@@ -34,16 +34,16 @@ public class EvaluationController {
         return Result.success(evaluations);
     }
 
-    @GetMapping("/teacher")         //根据teacherId查询评价
-    public Result<?> findByTeacherId(@PathVariable Integer teacherId){
+    @GetMapping("/teacher/{name}")         //根据teacherName查询评价
+    public Result<?> findByTeacherId(@PathVariable String teacherName){
         LambdaQueryWrapper<Evaluation> wrapper = Wrappers.<Evaluation>lambdaQuery();
-        wrapper.eq(Evaluation::getTeacherId,teacherId);
+        wrapper.eq(Evaluation::getTeacherName,teacherName);
         List<Evaluation> evaluations = evaluationMapper.selectList(wrapper);
         return Result.success(evaluations);
     }
 
     //根据id和userId删除评价
-    @GetMapping("/delete")
+    @GetMapping("/delete/{id}/{userId}")
     public Result<?> delete(@PathVariable Integer id,@PathVariable Integer userId){
         LambdaQueryWrapper<Evaluation> wrapper = Wrappers.<Evaluation>lambdaQuery();
         wrapper.eq(Evaluation::getId,id).eq(Evaluation::getUserId,userId);
