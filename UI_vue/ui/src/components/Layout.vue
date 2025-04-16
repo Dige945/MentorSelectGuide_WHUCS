@@ -13,20 +13,36 @@
               <el-menu-item index="/teachers">导师列表</el-menu-item>
               <el-menu-item index="/research">科研方向</el-menu-item>
               <el-menu-item index="/rankings">csranking</el-menu-item>
-              <el-menu-item index="/AIRecommend">智能推荐</el-menu-item>
+              <el-menu-item @click="handleAIRecommend">智能推荐</el-menu-item>
               <el-menu-item index="/about">关于我们</el-menu-item>
             </el-menu>
           </div>
           <div class="user-actions">
-            <el-button type="primary" plain>登录</el-button>
-            <el-button type="success">注册</el-button>
+            <template v-if="!isLoggedIn">
+              <el-button type="primary" @click="handleLogin">登录</el-button>
+              <el-button type="success" @click="handleRegister">注册</el-button>
+            </template>
+            <template v-else>
+              <el-dropdown @command="handleCommand">
+                <span class="user-dropdown">
+                  {{ currentUser.username }}
+                  <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="profile">个人信息</el-dropdown-item>
+                    <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </template>
           </div>
         </div>
       </el-header>
       
       <!-- 主要内容区域 -->
       <el-main>
-        <slot></slot>
+        <router-view></router-view>
       </el-main>
       
       <!-- 底部栏 -->
@@ -70,11 +86,50 @@
 </template>
 
 <script>
+import { ArrowDown } from '@element-plus/icons-vue'
+import { mapState, mapGetters } from 'vuex'
+
 export default {
   name: 'AppLayout',
+  components: {
+    ArrowDown
+  },
   computed: {
+    ...mapState(['user']),
+    ...mapGetters(['isLoggedIn', 'currentUser']),
     activeMenu() {
       return this.$route.path
+    }
+  },
+  created() {
+    // 组件创建时检查登录状态
+    this.$store.dispatch('checkLogin')
+  },
+  methods: {
+    handleLogin() {
+      this.$router.push('/login')
+    },
+    handleRegister() {
+      this.$router.push('/register')
+    },
+    handleCommand(command) {
+      if (command === 'profile') {
+        this.$router.push('/profile')
+      } else if (command === 'logout') {
+        this.$store.dispatch('logout')
+        this.$router.push('/login')
+      }
+    },
+    handleAIRecommend() {
+      if (!this.isLoggedIn) {
+        this.$message.warning('请先登录后再使用智能推荐功能')
+        this.$router.push({
+          path: '/login',
+          query: { redirect: '/AIRecommend' }
+        })
+      } else {
+        this.$router.push('/AIRecommend')
+      }
     }
   }
 }
@@ -192,5 +247,17 @@ export default {
   .footer-links {
     flex-direction: column;
   }
+}
+
+.user-dropdown {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #303133;
+  font-size: 14px;
+}
+
+.user-dropdown .el-icon--right {
+  margin-left: 5px;
 }
 </style> 

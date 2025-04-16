@@ -4,13 +4,17 @@
     <div class="search-section">
       <h2>找到最适合你的老师和课程</h2>
       <div class="search-box">
+        <el-select v-model="searchType" placeholder="选择搜索类型" style="width: 120px; margin-right: 10px">
+          <el-option label="教师" value="teacher" />
+          <el-option label="研究方向" value="research" />
+        </el-select>
         <el-input
           v-model="searchKeyword"
-          placeholder="输入教师姓名、课程名称或关键词"
+          :placeholder="searchType === 'teacher' ? '输入教师姓名' : '输入研究方向'"
           class="search-input"
         >
           <template #append>
-            <el-button type="primary">
+            <el-button type="primary" @click="handleSearch">
               <el-icon><Search /></el-icon>
               搜索
             </el-button>
@@ -19,7 +23,7 @@
       </div>
       <div class="search-tags">
         <span>热门搜索：</span>
-        <el-tag v-for="tag in hotTags" :key="tag" clickable>{{ tag }}</el-tag>
+        <el-tag v-for="tag in hotTags" :key="tag" clickable @click="handleTagClick(tag)">{{ tag }}</el-tag>
       </div>
     </div>
     
@@ -89,7 +93,8 @@ export default {
   data() {
     return {
       searchKeyword: '',
-      hotTags: ['计算机科学', '数据结构', '操作系统', '编译原理', '人工智能'],
+      searchType: 'teacher',
+      hotTags: ['计算机视觉', '自然语言处理', '机器学习', '人工智能', '数据挖掘'],
       popularTeachers: [
         {
           id: 1,
@@ -151,6 +156,33 @@ export default {
         }
       ]
     }
+  },
+  methods: {
+    handleSearch() {
+      if (!this.searchKeyword.trim()) {
+        this.$message.warning('请输入搜索关键词')
+        return
+      }
+      
+      if (this.searchType === 'teacher') {
+        // 跳转到教师列表页面，并传递搜索参数
+        this.$router.push({
+          path: '/teachers',
+          query: { search: this.searchKeyword }
+        })
+      } else {
+        // 跳转到研究方向页面，并传递搜索参数
+        this.$router.push({
+          path: '/research',
+          query: { search: this.searchKeyword }
+        })
+      }
+    },
+    handleTagClick(tag) {
+      this.searchType = 'research'
+      this.searchKeyword = tag
+      this.handleSearch()
+    }
   }
 }
 </script>
@@ -177,10 +209,12 @@ export default {
 .search-box {
   max-width: 600px;
   margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
 }
 
 .search-input {
-  width: 100%;
+  flex: 1;
 }
 
 .search-tags {
