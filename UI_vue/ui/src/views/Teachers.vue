@@ -372,25 +372,52 @@ export default {
         this.$message.warning('请输入评价内容');
         return;
       }
-      
+
       try {
-        // 这里应该调用后端API保存评价
-        console.log('提交评价:', {
+        console.log('准备提交评价数据:', {
           teacherId: this.currentTeacher.id,
-          ...this.reviewForm
+          content: this.reviewForm.content,
+          userId: "1" // 注意：现在是字符串类型
         });
-        
-        this.$message.success('评价提交成功！');
-        this.reviewDialogVisible = false;
-        
-        // 更新教师评分和评价数量
-        this.currentTeacher.rating = 
-          (this.currentTeacher.rating * this.currentTeacher.reviewCount + this.reviewForm.rating) / 
-          (this.currentTeacher.reviewCount + 1);
-        this.currentTeacher.reviewCount += 1;
-        this.currentTeacher.tags = [...new Set([...this.currentTeacher.tags, ...this.reviewForm.tags])];
+
+        // 调用后端API保存评价
+        const response = await axios.post('/api/evaluations/insert', {
+          teacherId: this.currentTeacher.id,
+          content: this.reviewForm.content,
+          userId: "1" // 注意：现在是字符串类型
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('服务器响应:', response);
+
+        if (response.data.code === '0') {
+          // 更新本地教师数据中的推荐数量
+          const teacherIndex = this.teachers.findIndex(t => t.id === this.currentTeacher.id);
+          if (teacherIndex !== -1) {
+            this.teachers[teacherIndex].recommendcount = (this.teachers[teacherIndex].recommendcount || 0) + 1;
+          }
+
+          this.$message.success('评价提交成功！');
+          this.reviewDialogVisible = false;
+        } else {
+          throw new Error(response.data.msg || '提交失败');
+        }
       } catch (error) {
-        this.$message.error('评价提交失败：' + error.message);
+        console.error('提交评价失败:', error);
+        if (error.response) {
+          console.error('错误状态码:', error.response.status);
+          console.error('错误响应数据:', error.response.data);
+          this.$message.error(`提交失败: ${error.response.data.msg || '服务器错误'}`);
+        } else if (error.request) {
+          console.error('没有收到响应:', error.request);
+          this.$message.error('提交失败: 无法连接到服务器');
+        } else {
+          console.error('请求配置错误:', error.message);
+          this.$message.error(`提交失败: ${error.message}`);
+        }
       }
     },
     getProcessedAvatarUrl(url) {
