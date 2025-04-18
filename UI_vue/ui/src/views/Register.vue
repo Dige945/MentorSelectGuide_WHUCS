@@ -107,7 +107,6 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
   position: relative;
   overflow: hidden;
 }
