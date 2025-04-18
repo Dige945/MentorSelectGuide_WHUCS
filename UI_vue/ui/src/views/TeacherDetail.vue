@@ -1,140 +1,206 @@
 <template>
   <div class="teacher-detail">
-    <div class="teacher-header">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <el-avatar :size="120" :src="teacher.avatar"></el-avatar>
-        </el-col>
-        <el-col :span="18">
-          <h1>{{ teacher.name }}</h1>
-          <p class="teacher-title">{{ teacher.title }}</p>
-          <p class="teacher-department">{{ teacher.department }}</p>
-          <div class="teacher-rating">
-            <el-rate
-              v-model="teacher.rating"
-              disabled
-              show-score
-              text-color="#ff9900"
-              score-template="{value}"
-            />
-            <span class="review-count">{{ teacher.reviewCount }}条评价</span>
+    <!-- 教师基本信息卡片 -->
+    <el-card class="teacher-info">
+      <div class="teacher-header">
+        <div class="avatar-container">
+          <el-image 
+            :src="teacher.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" 
+            fit="cover"
+            class="teacher-avatar"
+          />
+        </div>
+        <div class="teacher-basic">
+          <h1 class="teacher-name">{{ teacher.name }}</h1>
+          <div class="info-item">
+            <span class="label">职称：</span>
+            <span class="value">{{ teacher.title }}</span>
           </div>
-          <div class="teacher-tags">
-            <el-tag v-for="tag in teacher.tags" :key="tag" size="small" type="info" effect="plain">
-              {{ tag }}
-            </el-tag>
+          <div class="info-item">
+            <span class="label">院系：</span>
+            <span class="value">{{ teacher.department }}</span>
           </div>
-        </el-col>
-      </el-row>
-    </div>
+          <div class="info-item">
+            <span class="label">研究方向：</span>
+            <span class="value">{{ teacher.researchArea }}</span>
+          </div>
+        </div>
+      </div>
+    </el-card>
 
-    <div class="teacher-content">
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="教师简介" name="profile">
-          <div class="profile-section">
-            <h2>个人简介</h2>
-            <p>{{ teacher.profile || '暂无简介' }}</p>
-            
-            <h2>研究方向</h2>
-            <ul>
-              <li v-for="(area, index) in teacher.researchAreas" :key="index">
-                {{ area }}
-              </li>
-            </ul>
-            
-            <h2>主讲课程</h2>
-            <ul>
-              <li v-for="(course, index) in teacher.courses" :key="index">
-                {{ course }}
-              </li>
-            </ul>
+    <!-- 论文列表 -->
+    <el-card class="paper-list">
+      <template #header>
+        <div class="paper-header">
+          <span class="section-title">最近发表的20篇论文</span>
+          <div class="paper-filters">
+            <el-input
+              v-model="searchQuery"
+              placeholder="搜索论文"
+              prefix-icon="Search"
+              clearable
+              style="width: 200px"
+            />
+            <el-select v-model="yearFilter" clearable placeholder="选择年份" style="margin-left: 10px">
+              <el-option
+                v-for="year in years"
+                :key="year"
+                :label="year"
+                :value="year"
+              />
+            </el-select>
           </div>
-        </el-tab-pane>
-        
-        <el-tab-pane label="学生评价" name="reviews">
-          <div class="reviews-section">
-            <div v-for="review in teacher.reviews" :key="review.id" class="review-item">
-              <div class="review-header">
-                <el-avatar :size="40" :src="review.studentAvatar"></el-avatar>
-                <div class="review-info">
-                  <span class="student-name">{{ review.studentName }}</span>
-                  <span class="review-time">{{ review.time }}</span>
-                </div>
-              </div>
-              <div class="review-content">
-                <el-rate
-                  v-model="review.rating"
-                  disabled
-                  show-score
-                  text-color="#ff9900"
-                  score-template="{value}"
-                />
-                <p class="review-text">{{ review.content }}</p>
-                <div class="review-tags">
-                  <el-tag v-for="tag in review.tags" :key="tag" size="small" type="info" effect="plain">
-                    {{ tag }}
-                  </el-tag>
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
-    </div>
+        </div>
+      </template>
+
+      <el-table
+        v-loading="loading"
+        :data="filteredPapers"
+        style="width: 100%"
+      >
+        <el-table-column prop="title" label="论文标题">
+          <template #default="scope">
+            <el-link type="primary" :href="scope.row.url" target="_blank">
+              {{ scope.row.title }}
+            </el-link>
+          </template>
+        </el-table-column>
+        <el-table-column prop="author" label="作者" width="200" />
+        <el-table-column prop="year" label="年份" width="100" />
+      </el-table>
+
+      <div class="pagination-container" v-if="totalPapers > pageSize">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="totalPapers"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script>
+import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
+
 export default {
-  name: 'TeacherDetailView',
-  data() {
-    return {
-      activeTab: 'profile',
-      teacher: {
-        id: 1,
-        name: '张教授',
-        department: '计算机学院',
-        title: '教授',
-        rating: 4.8,
-        reviewCount: 256,
-        avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-        tags: ['教学认真', '有耐心', '授课生动'],
-        courses: ['数据结构', '算法分析', '人工智能'],
-        profile: '张教授现任武汉大学计算机学院教授，博士生导师。主要从事人工智能、机器学习等领域的研究。在国内外重要期刊发表论文30余篇，主持多项国家级科研项目。',
-        researchAreas: [
-          '人工智能',
-          '机器学习',
-          '深度学习',
-          '计算机视觉'
-        ],
-        reviews: [
-          {
-            id: 1,
-            studentName: '李同学',
-            studentAvatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-            rating: 5,
-            content: '张教授的课程非常生动有趣，讲解深入浅出，让我对人工智能产生了浓厚的兴趣。',
-            tags: ['教学认真', '授课生动'],
-            time: '2024-03-15'
-          },
-          {
-            id: 2,
-            studentName: '王同学',
-            studentAvatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-            rating: 4.5,
-            content: '课程内容充实，作业难度适中，老师答疑很及时。',
-            tags: ['重点突出', '答疑及时'],
-            time: '2024-03-10'
-          }
-        ]
+  name: 'TeacherDetail',
+  setup() {
+    const route = useRoute()
+    const teacher = ref({})
+    const papers = ref([])
+    const loading = ref(true)
+    const searchQuery = ref('')
+    const yearFilter = ref('')
+    const currentPage = ref(1)
+    const pageSize = ref(4)
+    const years = ref([])
+
+    // 获取教师信息
+    const fetchTeacherInfo = async () => {
+      try {
+        const response = await request.get(`/teachers/${route.params.id}`)
+        if (response.code === '0') {
+          teacher.value = response.data
+          // 获取该教师的论文
+          fetchTeacherPapers()
+        } else {
+          ElMessage.error(response.msg || '获取教师信息失败')
+        }
+      } catch (error) {
+        console.error('获取教师信息失败:', error)
+        ElMessage.error('获取教师信息失败')
       }
     }
-  },
-  created() {
-    // 从路由参数获取教师ID
-    const teacherId = this.$route.params.id;
-    // 这里应该调用API获取教师详细信息
-    console.log('获取教师ID:', teacherId);
+
+    // 获取教师论文
+    const fetchTeacherPapers = async () => {
+      if (!teacher.value.name) {
+        ElMessage.warning('教师信息不完整')
+        return
+      }
+      
+      try {
+        loading.value = true
+        const response = await request.get(`/paper/teacher/${teacher.value.name}`)
+        if (response.code === '0') {
+          papers.value = response.data
+          // 提取所有年份并去重
+          years.value = [...new Set(papers.value.map(paper => paper.year))].sort().reverse()
+        } else {
+          ElMessage.error(response.msg || '获取论文列表失败')
+        }
+      } catch (error) {
+        console.error('获取论文列表失败:', error)
+        ElMessage.error('获取论文列表失败')
+      } finally {
+        loading.value = false
+      }
+    }
+
+    // 过滤论文
+    const filteredPapers = computed(() => {
+      let result = papers.value
+
+      // 搜索过滤
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
+        result = result.filter(paper => 
+          paper.title.toLowerCase().includes(query) ||
+          paper.author.toLowerCase().includes(query)
+        )
+      }
+
+      // 年份过滤
+      if (yearFilter.value) {
+        result = result.filter(paper => paper.year === yearFilter.value)
+      }
+
+      return result
+    })
+
+    // 分页相关数据
+    const totalPapers = computed(() => filteredPapers.value.length)
+    const paginatedPapers = computed(() => {
+      const start = (currentPage.value - 1) * pageSize.value
+      const end = start + pageSize.value
+      return filteredPapers.value.slice(start, end)
+    })
+
+    // 分页处理方法
+    const handleSizeChange = (val) => {
+      pageSize.value = val
+      currentPage.value = 1
+    }
+
+    const handleCurrentChange = (val) => {
+      currentPage.value = val
+    }
+
+    onMounted(() => {
+      fetchTeacherInfo()
+    })
+
+    return {
+      teacher,
+      loading,
+      searchQuery,
+      yearFilter,
+      years,
+      currentPage,
+      pageSize,
+      totalPapers,
+      filteredPapers: paginatedPapers,
+      handleSizeChange,
+      handleCurrentChange
+    }
   }
 }
 </script>
@@ -142,102 +208,148 @@ export default {
 <style scoped>
 .teacher-detail {
   padding: 20px;
+  width: 1000px;
+  margin: 0 auto;
+}
+
+.teacher-info {
+  margin-bottom: 20px;
+  background-color: #fff;
 }
 
 .teacher-header {
-  background-color: #fff;
-  padding: 30px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-.teacher-header h1 {
-  margin: 0 0 10px;
-  font-size: 28px;
-  color: #303133;
-}
-
-.teacher-title, .teacher-department {
-  color: #606266;
-  margin: 5px 0;
-}
-
-.teacher-rating {
-  margin: 15px 0;
-}
-
-.review-count {
-  margin-left: 10px;
-  color: #909399;
-}
-
-.teacher-tags {
-  margin-top: 15px;
-}
-
-.teacher-content {
-  background-color: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-.profile-section h2 {
-  color: #303133;
-  margin: 20px 0 10px;
-}
-
-.profile-section p, .profile-section ul {
-  color: #606266;
-  line-height: 1.6;
-}
-
-.profile-section ul {
-  padding-left: 20px;
-}
-
-.review-item {
-  padding: 20px 0;
-  border-bottom: 1px solid #EBEEF5;
-}
-
-.review-item:last-child {
-  border-bottom: none;
-}
-
-.review-header {
   display: flex;
-  align-items: center;
+  padding: 20px;
+  gap: 30px;
+}
+
+.avatar-container {
+  flex-shrink: 0;
+}
+
+.teacher-avatar {
+  width: 180px;
+  height: 240px;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.teacher-basic {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.teacher-name {
+  font-size: 28px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #409EFF;
   margin-bottom: 10px;
 }
 
-.review-info {
-  margin-left: 10px;
+.info-item {
+  display: flex;
+  align-items: flex-start;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-.student-name {
-  font-weight: bold;
+.info-item .label {
+  color: #606266;
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.info-item .value {
+  color: #303133;
+  flex-grow: 1;
+}
+
+.paper-list {
+  background-color: #fff;
+  padding: 0 20px 20px 20px;
+}
+
+.paper-header {
+  margin: 20px 0;
+  padding: 0;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
   color: #303133;
 }
 
-.review-time {
-  color: #909399;
-  font-size: 12px;
-  margin-left: 10px;
+.paper-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.review-content {
-  margin-top: 10px;
+.pagination-container {
+  margin-top: 30px;
+  padding: 20px 0;
+  display: flex;
+  justify-content: center;
 }
 
-.review-text {
-  color: #606266;
-  line-height: 1.6;
-  margin: 10px 0;
+/* 表格样式优化 */
+:deep(.el-table) {
+  margin-top: 20px;
 }
 
-.review-tags {
-  margin-top: 10px;
+:deep(.el-table th) {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  padding: 16px 0;
+}
+
+:deep(.el-table td) {
+  padding: 20px 0;
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td) {
+  background-color: #f5f7fa;
+}
+
+/* 卡片阴影效果 */
+.teacher-info,
+.paper-list {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+}
+
+.teacher-info:hover,
+.paper-list:hover {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* 分页器样式优化 */
+:deep(.el-pagination) {
+  padding: 0;
+  font-weight: normal;
+}
+
+:deep(.el-pagination .el-select .el-input) {
+  width: 100px;
+}
+
+:deep(.el-pagination .el-pagination__sizes) {
+  margin-right: 15px;
+}
+
+/* 论文标题链接样式 */
+:deep(.el-link) {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+:deep(.el-link:hover) {
+  text-decoration: underline;
 }
 </style> 
