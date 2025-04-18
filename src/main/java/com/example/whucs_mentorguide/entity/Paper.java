@@ -3,7 +3,7 @@ package com.example.whucs_mentorguide.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-@TableName("users")
+@TableName("paper")
     // Declare a string variable to store the teacher's name
 @Data
 public class Paper {
