@@ -81,6 +81,29 @@
         />
       </div>
     </el-card>
+
+    <!-- 评价卡片 -->
+    <el-card class="evaluations-card">
+      <template #header>
+        <div class="card-header">
+          <span>学生推荐理由</span>
+        </div>
+      </template>
+      
+      <div v-loading="evaluationsLoading" class="evaluations-list">
+        <div v-if="evaluations.length === 0" class="empty-text">
+          暂无评价
+        </div>
+        <div v-else v-for="evaluation in evaluations" :key="evaluation.id" class="evaluation-item">
+          <div class="evaluation-content">
+            <div class="evaluation-header">
+              <span class="evaluation-time">{{ formatTime(evaluation.createdAt) }}</span>
+            </div>
+            <p class="evaluation-text">{{ evaluation.content }}</p>
+          </div>
+        </div>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -96,7 +119,9 @@ export default {
     const route = useRoute()
     const teacher = ref({})
     const papers = ref([])
+    const evaluations = ref([])
     const loading = ref(true)
+    const evaluationsLoading = ref(false)
     const searchQuery = ref('')
     const yearFilter = ref('')
     const currentPage = ref(1)
@@ -109,8 +134,9 @@ export default {
         const response = await request.get(`/teachers/${route.params.id}`)
         if (response.code === '0') {
           teacher.value = response.data
-          // 获取该教师的论文
+          // 获取该教师的论文和评价
           fetchTeacherPapers()
+          fetchTeacherEvaluations()
         } else {
           ElMessage.error(response.msg || '获取教师信息失败')
         }
@@ -142,6 +168,79 @@ export default {
         ElMessage.error('获取论文列表失败')
       } finally {
         loading.value = false
+      }
+    }
+
+    // 获取教师评价
+    const fetchTeacherEvaluations = async () => {
+      if (!teacher.value.id) {
+        ElMessage.warning('教师信息不完整')
+        return
+      }
+      
+      try {
+        evaluationsLoading.value = true
+        const response = await request.get(`/evaluations/teacher/${teacher.value.id}`)
+        if (response.code === '0') {
+          evaluations.value = response.data
+        } else {
+          ElMessage.error(response.msg || '获取评价列表失败')
+        }
+      } catch (error) {
+        console.error('获取评价列表失败:', error)
+        ElMessage.error('获取评价列表失败')
+      } finally {
+        evaluationsLoading.value = false
+      }
+    }
+
+    // 格式化时间
+    const formatTime = (timestamp) => {
+      try {
+        if (!timestamp) return ''
+        
+        // 如果是简化的日期格式（如 25-04-18）
+        if (typeof timestamp === 'string' && /^\d{2}-\d{2}-\d{2}$/.test(timestamp)) {
+          const [day, month, year] = timestamp.split('-')
+          // 年份是 25 表示 2025 年
+          return `2025-${month}-${day}`
+        }
+        
+        // 如果是字符串，尝试解析
+        if (typeof timestamp === 'string') {
+          // 处理可能的时间戳字符串格式
+          if (timestamp.includes('T')) {
+            timestamp = new Date(timestamp)
+          } else {
+            // 尝试解析数字时间戳
+            const numTimestamp = Number(timestamp)
+            if (!isNaN(numTimestamp)) {
+              timestamp = new Date(numTimestamp)
+            } else {
+              timestamp = new Date(timestamp)
+            }
+          }
+        }
+        
+        // 如果是数字，可能是时间戳
+        if (typeof timestamp === 'number') {
+          timestamp = new Date(timestamp)
+        }
+        
+        // 确保是有效的日期对象
+        if (!(timestamp instanceof Date) || isNaN(timestamp)) {
+          return ''
+        }
+        
+        const year = timestamp.getFullYear()
+        const month = String(timestamp.getMonth() + 1).padStart(2, '0')
+        const day = String(timestamp.getDate()).padStart(2, '0')
+        const hours = String(timestamp.getHours()).padStart(2, '0')
+        const minutes = String(timestamp.getMinutes()).padStart(2, '0')
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}`
+      } catch (error) {
+        return ''
       }
     }
 
@@ -190,14 +289,21 @@ export default {
 
     return {
       teacher,
+      papers,
+      evaluations,
       loading,
+      evaluationsLoading,
       searchQuery,
       yearFilter,
-      years,
       currentPage,
       pageSize,
+      years,
       totalPapers,
       filteredPapers: paginatedPapers,
+      fetchTeacherInfo,
+      fetchTeacherPapers,
+      fetchTeacherEvaluations,
+      formatTime,
       handleSizeChange,
       handleCurrentChange
     }
@@ -351,5 +457,75 @@ export default {
 
 :deep(.el-link:hover) {
   text-decoration: underline;
+}
+
+.evaluations-card {
+  margin: 20px auto;
+  width: 1000px;
+  background-color: #fff;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.evaluations-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.evaluations-list {
+  min-height: 200px;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.evaluation-item {
+  padding: 20px;
+  border-bottom: 1px solid #f5f5f5;
+  transition: all 0.3s ease;
+  background-color: #fff;
+}
+
+.evaluation-item:last-child {
+  border-bottom: none;
+}
+
+.evaluation-item:hover {
+  background-color: #fafafa;
+}
+
+.evaluation-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evaluation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.evaluation-time {
+  font-size: 13px;
+  color: #999;
+  font-weight: 400;
+}
+
+.evaluation-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.empty-text {
+  text-align: center;
+  color: #999;
+  padding: 40px 0;
+  font-size: 14px;
+  font-weight: 400;
 }
 </style> 

@@ -75,6 +75,32 @@
         </div>
         <HotTeachers />
       </div>
+
+      <!-- 最近评论卡片 -->
+      <div class="section-container reviews-section">
+        <div class="section-header">
+          <h2 class="gradient-text">最近评论</h2>
+        </div>
+        <el-card class="recent-reviews" :body-style="{ padding: '0' }">
+          <div v-loading="loading" class="review-list">
+            <div v-if="recentReviews.length === 0" class="empty-text">
+              暂无评论
+            </div>
+            <div v-else v-for="review in recentReviews" :key="review.id" class="review-item">
+              <div class="review-content">
+                <div class="review-header">
+                  <div class="review-header-left">
+                    <span class="teacher-avatar">{{ review.teacherName.charAt(0) }}</span>
+                    <span class="teacher-name">{{ review.teacherName }}</span>
+                  </div>
+                  <span class="review-time">{{ formatTime(review.createdAt) }}</span>
+                </div>
+                <p class="review-text">{{ review.content }}</p>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </div>
     </div>
   </div>
 </template>
@@ -102,6 +128,8 @@ export default {
     const searchResults = ref([])
     const hoveredTeacherId = ref(null)
     let searchTimer = null
+    const recentReviews = ref([])
+    const loading = ref(false)
 
     const handleSearch = () => {
       if (searchTimer) {
@@ -147,6 +175,74 @@ export default {
       { icon: 'Medal', number: '100+', label: '成功案例' }
     ])
 
+    // 获取最近评论
+    const fetchRecentReviews = async () => {
+      try {
+        loading.value = true
+        const response = await request.get('/evaluations/recent')
+        if (response.code === '0') {
+          recentReviews.value = response.data
+        } else {
+          ElMessage.error(response.msg || '获取评论失败')
+        }
+      } catch (error) {
+        console.error('获取评论失败:', error)
+        ElMessage.error('获取评论失败')
+      } finally {
+        loading.value = false
+      }
+    }
+
+    // 格式化时间
+    const formatTime = (timestamp) => {
+      try {
+        if (!timestamp) return ''
+        
+        // 如果是简化的日期格式（如 25-04-18）
+        if (typeof timestamp === 'string' && /^\d{2}-\d{2}-\d{2}$/.test(timestamp)) {
+          const [day, month, year] = timestamp.split('-')
+          // 年份是 25 表示 2025 年
+          return `2025-${month}-${day}`
+        }
+        
+        // 如果是字符串，尝试解析
+        if (typeof timestamp === 'string') {
+          // 处理可能的时间戳字符串格式
+          if (timestamp.includes('T')) {
+            timestamp = new Date(timestamp)
+          } else {
+            // 尝试解析数字时间戳
+            const numTimestamp = Number(timestamp)
+            if (!isNaN(numTimestamp)) {
+              timestamp = new Date(numTimestamp)
+            } else {
+              timestamp = new Date(timestamp)
+            }
+          }
+        }
+        
+        // 如果是数字，可能是时间戳
+        if (typeof timestamp === 'number') {
+          timestamp = new Date(timestamp)
+        }
+        
+        // 确保是有效的日期对象
+        if (!(timestamp instanceof Date) || isNaN(timestamp)) {
+          return ''
+        }
+        
+        const year = timestamp.getFullYear()
+        const month = String(timestamp.getMonth() + 1).padStart(2, '0')
+        const day = String(timestamp.getDate()).padStart(2, '0')
+        const hours = String(timestamp.getHours()).padStart(2, '0')
+        const minutes = String(timestamp.getMinutes()).padStart(2, '0')
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}`
+      } catch (error) {
+        return ''
+      }
+    }
+
     onMounted(() => {
       // 添加数字增长动画
       stats.value.forEach((stat, index) => {
@@ -164,6 +260,8 @@ export default {
           }
         })
       })
+
+      fetchRecentReviews()
     })
 
     return {
@@ -174,7 +272,10 @@ export default {
       showButton,
       hideButton,
       openTeacherProfile,
-      stats
+      stats,
+      recentReviews,
+      loading,
+      formatTime
     }
   }
 }
@@ -415,6 +516,108 @@ export default {
     transform: scale(1.05);
     background: #000;
   }
+}
+
+.reviews-section {
+  margin-top: 80px;
+}
+
+.recent-reviews {
+  margin: 0 auto;
+  max-width: 800px;
+  background-color: #fff;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.recent-reviews:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.review-list {
+  min-height: 200px;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.review-item {
+  padding: 20px;
+  border-bottom: 1px solid #f5f5f5;
+  transition: all 0.3s ease;
+  background-color: #fff;
+}
+
+.review-item:last-child {
+  border-bottom: none;
+}
+
+.review-item:hover {
+  background-color: #fafafa;
+  transform: translateX(0);
+}
+
+.review-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.review-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.teacher-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.teacher-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #000;
+}
+
+.review-time {
+  font-size: 13px;
+  color: #999;
+  font-weight: 400;
+}
+
+.review-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  padding-left: 48px;
+  position: relative;
+}
+
+.empty-text {
+  text-align: center;
+  color: #999;
+  padding: 40px 0;
+  font-size: 14px;
+  font-weight: 400;
 }
 </style> 
 

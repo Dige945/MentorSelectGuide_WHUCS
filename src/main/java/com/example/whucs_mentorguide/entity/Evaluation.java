@@ -14,11 +14,17 @@ public class Evaluation {
     @TableId(type = IdType.AUTO)
     private Integer id;
 
+
     @TableField("teacherId")
     private Integer teacherId;
 
     @TableField("userId")
     private String userId;
+
+
+
+    @TableField("teacherName")
+    private String teacherName;
 
     @TableField("content")
     private String content;
@@ -64,5 +70,12 @@ public class Evaluation {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getTeacherName() {
+        return teacherName;
+    }
+    public void setTeacherName(String teacherName) {
+        this.teacherName = teacherName;
     }
 }

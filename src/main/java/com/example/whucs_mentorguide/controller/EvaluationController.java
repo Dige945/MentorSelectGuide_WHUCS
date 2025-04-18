@@ -29,6 +29,9 @@ public class EvaluationController {
         if (evaluation.getContent() == null || evaluation.getContent().trim().isEmpty()) {
             return Result.error("-1", "评价内容不能为空");
         }
+        if (evaluation.getTeacherName() == null || evaluation.getTeacherName().trim().isEmpty()) {
+            return Result.error("-1", "教师姓名不能为空");
+        }
         
         try {
             // 设置创建时间为当前时间
@@ -65,6 +68,16 @@ public class EvaluationController {
     @GetMapping("/all")         //查询所有评价
     public Result<?> findAllEvaluations(){
         List<Evaluation> evaluations = evaluationMapper.selectList(null);
+        return Result.success(evaluations);
+    }
+
+    @GetMapping("/recent")      //查询最近5条评价
+    public Result<?> findRecentEvaluations(){
+        List<Evaluation> evaluations = evaluationMapper.selectList(
+            Wrappers.<Evaluation>lambdaQuery()
+                .orderByDesc(Evaluation::getCreatedAt)
+                .last("LIMIT 5")
+        );
         return Result.success(evaluations);
     }
 

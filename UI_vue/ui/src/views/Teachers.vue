@@ -376,6 +376,7 @@ export default {
       try {
         console.log('准备提交评价数据:', {
           teacherId: this.currentTeacher.id,
+          teacherName: this.currentTeacher.name,
           content: this.reviewForm.content,
           userId: "1" // 注意：现在是字符串类型
         });
@@ -383,6 +384,7 @@ export default {
         // 调用后端API保存评价
         const response = await axios.post('/api/evaluations/insert', {
           teacherId: this.currentTeacher.id,
+          teacherName: this.currentTeacher.name,
           content: this.reviewForm.content,
           userId: "1" // 注意：现在是字符串类型
         }, {
