@@ -107,7 +107,21 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+  position: relative;
   overflow: hidden;
+}
+
+.register-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('@/assets/register-bg.jpg') center/cover no-repeat;
+  opacity: 0.1;
+  z-index: 0;
 }
 
 .register-box {
@@ -118,6 +132,9 @@ export default {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
   animation: fadeIn 0.5s ease;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .register-title {
@@ -126,14 +143,18 @@ export default {
 }
 
 .register-title h2 {
-  color: #333;
-  font-size: 28px;
+  color: #1a1a1a;
+  font-size: 2.2rem;
   margin-bottom: 8px;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 .register-title p {
   color: #666;
-  font-size: 16px;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .register-form {
@@ -143,33 +164,50 @@ export default {
 .register-button {
   width: 100%;
   height: 44px;
-  font-size: 16px;
+  font-size: 1rem;
   border-radius: 22px;
-  background: linear-gradient(135deg, #667eea 0%, #66ac56 100%);
+  background: #1a1a1a;
   border: none;
   transition: all 0.3s ease;
+  letter-spacing: 1px;
+  font-weight: 500;
 }
 
 .register-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: #333;
 }
 
 .login-link {
   text-align: center;
   margin-top: 20px;
   color: #666;
+  font-size: 0.9rem;
 }
 
 .login-link span {
-  color: #667eea;
+  color: #1a1a1a;
   cursor: pointer;
   font-weight: 500;
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  padding-bottom: 2px;
 }
 
-.login-link span:hover {
-  color: #764ba2;
+.login-link span::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #1a1a1a;
+  transition: width 0.3s ease;
+}
+
+.login-link span:hover::after {
+  width: 100%;
 }
 
 @keyframes fadeIn {
@@ -186,10 +224,42 @@ export default {
 :deep(.el-input__wrapper) {
   border-radius: 22px;
   padding: 8px 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+:deep(.el-input__wrapper:hover) {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  border-color: #1a1a1a;
+  box-shadow: 0 0 0 1px #1a1a1a;
 }
 
 :deep(.el-input__inner) {
   height: 44px;
   line-height: 44px;
+  color: #1a1a1a;
+}
+
+:deep(.el-input__prefix) {
+  color: #666;
+}
+
+:deep(.el-input__prefix-inner) {
+  margin-right: 8px;
+}
+
+@media (max-width: 480px) {
+  .register-box {
+    width: 90%;
+    padding: 30px 20px;
+  }
+  
+  .register-title h2 {
+    font-size: 1.8rem;
+  }
 }
 </style>
