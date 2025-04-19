@@ -1,66 +1,126 @@
 <template>
   <div class="research-container">
-    <h1 class="page-title">研究方向</h1>
+    <h1 class="page-title" data-aos="fade-down">研究方向</h1>
     
-    <div class="research-stats">
+    <div class="research-stats" data-aos="fade-up" data-aos-delay="200">
       <el-row :gutter="20">
         <el-col :span="8">
           <el-card shadow="hover" class="stat-card">
-            <div class="stat-number">7</div>
-            <div class="stat-label">主要研究领域</div>
+            <div class="stat-content">
+              <div class="stat-number animate-number">7</div>
+              <div class="stat-label">主要研究领域</div>
+            </div>
           </el-card>
         </el-col>
         <el-col :span="8">
           <el-card shadow="hover" class="stat-card">
-            <div class="stat-number">35</div>
-            <div class="stat-label">具体研究方向</div>
+            <div class="stat-content">
+              <div class="stat-number animate-number">35</div>
+              <div class="stat-label">具体研究方向</div>
+            </div>
           </el-card>
         </el-col>
         <el-col :span="8">
           <el-card shadow="hover" class="stat-card">
-            <div class="stat-number">100+</div>
-            <div class="stat-label">相关教师</div>
+            <div class="stat-content">
+              <div class="stat-number animate-number">100+</div>
+              <div class="stat-label">相关教师</div>
+            </div>
           </el-card>
         </el-col>
       </el-row>
     </div>
 
     <div class="research-areas">
-      <div v-for="area in researchAreas" :key="area.id" class="area-section">
+      <div v-for="(area, index) in researchAreas" 
+           :key="area.id" 
+           class="area-section">
         <div class="area-header">
           <h2>{{ area.name }}</h2>
-          <el-button type="primary" @click="navigateToArea(area.id)">
+          <el-button 
+            type="primary" 
+            class="view-all-btn"
+            @click="navigateToArea(area.id)"
+          >
             查看所有方向
           </el-button>
         </div>
         <el-row :gutter="20">
-          <el-col :span="4" v-for="direction in area.directions.slice(0, 5)" :key="direction.id">
+          <el-col 
+            :span="4" 
+            v-for="direction in area.directions.slice(0, 5)" 
+            :key="direction.id"
+          >
             <el-card 
               shadow="hover" 
               class="direction-card"
-              @click="navigateToTask(direction.id)"
             >
-              <div class="direction-image">
-                <img :src="require(`@/assets/research/${direction.image}`)" :alt="direction.name">
+              <div class="direction-image-container">
+                <div class="direction-image">
+                  <img :src="require(`@/assets/research/${direction.image}`)" :alt="direction.name">
+                </div>
+                <div class="image-overlay"></div>
               </div>
               <div class="direction-content">
                 <div class="direction-name">{{ direction.name }}</div>
                 <div class="direction-en-name">{{ direction.enName }}</div>
+                <div class="direction-buttons">
+                  <el-button 
+                    type="text" 
+                    class="detail-btn"
+                    @click="navigateToPapersWithCode(direction)"
+                  >
+                    具体详情
+                  </el-button>
+                  <el-button 
+                    type="text" 
+                    class="ai-btn"
+                    @click="showAIDescription(direction)"
+                  >
+                    问AI
+                  </el-button>
+                </div>
               </div>
             </el-card>
           </el-col>
         </el-row>
       </div>
     </div>
+
+    <el-dialog
+      v-model="dialogVisible"
+      :title="currentDirection ? currentDirection.name + '研究方向介绍' : '研究方向介绍'"
+      width="50%"
+      class="custom-dialog"
+      @close="handleClose"
+    >
+      <div class="ai-description">
+        <div v-if="aiDescription" v-html="formattedDescription"></div>
+        <div v-else class="loading-text">
+          <el-icon class="is-loading"><Loading /></el-icon>
+          正在生成介绍...
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
+import { ElLoading } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
+import { marked } from 'marked'
+
 export default {
   name: 'ResearchDirection',
+  components: {
+    Loading
+  },
   data() {
     return {
       searchQuery: this.$route.query.search || '',
+      dialogVisible: false,
+      currentDirection: null,
+      aiDescription: '',
       researchAreas: [
         {
           id: 'cv',
@@ -142,6 +202,13 @@ export default {
       ]
     }
   },
+  computed: {
+    formattedDescription() {
+      if (!this.aiDescription) return '';
+      // Using marked to convert markdown to HTML
+      return marked(this.aiDescription);
+    }
+  },
   watch: {
     '$route.query.search': {
       handler(newVal) {
@@ -176,10 +243,75 @@ export default {
       }
     },
     navigateToArea(areaId) {
-      this.$router.push(`/area/${areaId}`)
+      // 领域ID到PapersWithCode领域名称的映射
+      const areaMapping = {
+        'cv': 'computer-vision',
+        'nlp': 'natural-language-processing',
+        'methodology': 'methodology',
+        'graphs': 'graphs',
+        'code': 'code',
+        'multimodal': 'multimodal',
+        'speech': 'speech',
+        'robotics': 'robotics'
+      };
+
+      const paperswithcodeArea = areaMapping[areaId] || areaId;
+      window.open(`https://paperswithcode.com/area/${paperswithcodeArea}`, '_blank');
     },
     navigateToTask(taskId) {
       this.$router.push(`/tasks/${taskId}`)
+    },
+    navigateToPapersWithCode(direction) {
+      // 这里需要根据实际的研究方向ID构建PapersWithCode的URL
+      const baseUrl = 'https://paperswithcode.com/task/';
+      const url = baseUrl + direction.id;
+      window.open(url, '_blank');
+    },
+    formatDescription(text) {
+      // 将换行符转换为HTML换行
+      return text.replace(/\n/g, '<br>')
+    },
+    
+    async showAIDescription(direction) {
+      this.dialogVisible = true;
+      this.currentDirection = direction;
+      this.aiDescription = '';
+      
+      try {
+        const response = await fetch('/api/deepSeek/direction/intro', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ direction: direction.name })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          
+          const text = decoder.decode(value);
+          // Clean up the text and handle line breaks
+          const cleanText = text
+            .replace(/data:/g, '')
+            .replace(/\n\s*\n/g, '\n\n')
+            .trim();
+          
+          this.aiDescription += cleanText;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        this.$message.error('获取研究方向介绍失败');
+      }
+    },
+
+    handleClose() {
+      this.dialogVisible = false
+      this.currentDirection = null
+      this.aiDescription = ''
     }
   }
 }
@@ -187,96 +319,233 @@ export default {
 
 <style scoped>
 .research-container {
-  padding: 20px;
+  padding: 40px;
+  background: #ffffff;
+  min-height: 100vh;
 }
 
 .page-title {
-  font-size: 28px;
-  color: #303133;
-  margin-bottom: 30px;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #000;
   text-align: center;
+  margin-bottom: 50px;
+  letter-spacing: 2px;
 }
 
 .research-stats {
-  margin-bottom: 40px;
+  margin-bottom: 60px;
 }
 
 .stat-card {
-  text-align: center;
+  background: #fff;
+  border: 1px solid #eee;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.stat-content {
   padding: 20px;
+  text-align: center;
 }
 
 .stat-number {
-  font-size: 36px;
-  font-weight: bold;
-  color: #409EFF;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #000;
   margin-bottom: 10px;
 }
 
+.animate-number {
+  opacity: 0;
+  animation: fadeInUp 0.6s ease forwards;
+}
+
 .stat-label {
-  font-size: 16px;
-  color: #606266;
+  font-size: 1rem;
+  color: #666;
+  letter-spacing: 1px;
 }
 
 .area-section {
-  margin-bottom: 40px;
+  margin-bottom: 60px;
 }
 
 .area-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
 }
 
 .area-header h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #000;
   margin: 0;
-  font-size: 24px;
-  color: #303133;
+}
+
+.view-all-btn {
+  background: #000;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.view-all-btn:hover {
+  background: #333;
+  transform: translateY(-2px);
 }
 
 .direction-card {
-  cursor: pointer;
-  margin-bottom: 20px;
-  transition: all 0.3s;
-  padding: 10px;
-  height: 180px;
+  height: 280px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  background: #fff;
+  overflow: hidden;
 }
 
 .direction-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+}
+
+.direction-image-container {
+  position: relative;
+  height: 140px;
+  overflow: hidden;
 }
 
 .direction-image {
   width: 100%;
-  height: 80px;
-  overflow: hidden;
-  border-radius: 4px;
-  margin-bottom: 10px;
+  height: 100%;
+  transition: all 0.4s ease;
 }
 
 .direction-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: all 0.4s ease;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.2);
+  opacity: 0;
+  transition: all 0.4s ease;
+}
+
+.direction-card:hover .direction-image img {
+  transform: scale(1.1);
+  filter: grayscale(0%);
+}
+
+.direction-card:hover .image-overlay {
+  opacity: 1;
 }
 
 .direction-content {
-  padding: 0 5px;
+  padding: 20px;
 }
 
 .direction-name {
-  font-size: 14px;
-  font-weight: bold;
-  color: #303133;
-  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #000;
   margin-bottom: 5px;
 }
 
 .direction-en-name {
-  font-size: 12px;
-  color: #909399;
-  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.direction-buttons {
+  display: flex;
+  justify-content: space-between;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+}
+
+.direction-card:hover .direction-buttons {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.detail-btn, .ai-btn {
+  color: #000;
+  padding: 0;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.detail-btn:hover, .ai-btn:hover {
+  color: #666;
+  transform: translateX(5px);
+}
+
+.custom-dialog {
+  border-radius: 8px;
+}
+
+.loading-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #666;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .research-container {
+    padding: 20px;
+  }
+
+  .page-title {
+    font-size: 2rem;
+  }
+
+  .stat-number {
+    font-size: 2rem;
+  }
+
+  .area-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .direction-card {
+    height: auto;
+  }
 }
 </style>
+
+

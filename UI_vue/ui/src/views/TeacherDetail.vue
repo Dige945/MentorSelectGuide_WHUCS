@@ -2,7 +2,7 @@
   <div class="teacher-detail">
     <!-- 教师基本信息卡片 -->
     <el-card class="teacher-info">
-      <div class="teacher-header">
+    <div class="teacher-header">
         <div class="avatar-container">
           <el-image 
             :src="teacher.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" 
@@ -24,8 +24,8 @@
             <span class="label">研究方向：</span>
             <span class="value">{{ teacher.researchArea }}</span>
           </div>
-        </div>
-      </div>
+                </div>
+              </div>
     </el-card>
 
     <!-- 论文列表 -->
@@ -49,8 +49,8 @@
                 :value="year"
               />
             </el-select>
-          </div>
-        </div>
+                </div>
+              </div>
       </template>
 
       <el-table
@@ -102,7 +102,7 @@
             <p class="evaluation-text">{{ evaluation.content }}</p>
           </div>
         </div>
-      </div>
+    </div>
     </el-card>
   </div>
 </template>

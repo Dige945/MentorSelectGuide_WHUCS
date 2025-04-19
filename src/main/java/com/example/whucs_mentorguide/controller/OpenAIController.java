@@ -1,5 +1,6 @@
 package com.example.whucs_mentorguide.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -90,118 +91,86 @@ public class OpenAIController {
      */
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chat(@RequestBody String question) {
-        // TODO: 生产环境应从认证头获取真实用户ID
-        String userId = "123"; // 临时硬编码用户ID
-
-        // 创建SSE发射器（-1表示永不超时）
         SseEmitter emitter = new SseEmitter(-1L);
-
-        // 提交异步任务处理请求
+        
         executorService.execute(() -> {
             try {
-                log.info("开始处理流式请求，问题内容: {}", question);
-
-                // --- 历史记录管理 ---
-                // 获取当前用户的历史消息（不存在则创建空列表）
-                List<Map<String, String>> messages = sessionHistory.getOrDefault(userId, new ArrayList<>());
-
-                // 构造用户消息对象
-                Map<String, String> userMessage = new HashMap<>();
-                userMessage.put("role", "user");    // 消息角色：用户
-                userMessage.put("content", question); // 消息内容
-
-                // 构造系统提示消息（注意：当前实现每次请求都会添加，建议优化）
+                // 构建消息
+                List<Map<String, String>> messages = new ArrayList<>();
+                
+                // 添加系统消息
                 Map<String, String> systemMessage = new HashMap<>();
-                systemMessage.put("role", "system"); // 消息角色：系统
-                systemMessage.put("content", SYSTEM_PROMPT); // 系统提示词
-
-                // 将新消息加入历史记录
-                messages.add(userMessage);
+                systemMessage.put("role", "system");
+                systemMessage.put("content", SYSTEM_PROMPT);
                 messages.add(systemMessage);
-
-                // --- API请求构造 ---
+                
+                // 添加用户消息
+                Map<String, String> userMessage = new HashMap<>();
+                userMessage.put("role", "user");
+                userMessage.put("content", question);
+                messages.add(userMessage);
+                
+                // 构建请求体
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("model", "deepseek-chat");
+                requestBody.put("messages", messages);
+                requestBody.put("stream", true);
+                
+                // 发送请求并处理响应
                 try (CloseableHttpClient client = HttpClients.createDefault()) {
                     HttpPost request = new HttpPost(getApiUrl());
-
-                    // 设置请求头
                     request.setHeader("Content-Type", "application/json");
                     request.setHeader("Authorization", "Bearer " + API_KEY);
-
-                    // 构造请求体
-                    Map<String, Object> requestMap = new HashMap<>();
-                    requestMap.put("model", "deepseek-chat"); // 使用的模型
-                    requestMap.put("messages", messages);     // 包含上下文的完整消息历史
-                    requestMap.put("stream", true);           // 启用流式响应
-
-                    // 序列化为JSON字符串
-                    String requestBody = objectMapper.writeValueAsString(requestMap);
-                    request.setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
-
-                    // --- 处理API响应 ---
-                    try (CloseableHttpResponse response = client.execute(request);
-                         BufferedReader reader = new BufferedReader(
-                                 new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))) {
-
-                        StringBuilder aiResponse = new StringBuilder(); // 用于累积完整响应
+                    
+                    String jsonBody = objectMapper.writeValueAsString(requestBody);
+                    request.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
+                    
+                    try (CloseableHttpResponse response = client.execute(request)) {
+                        if (response.getStatusLine().getStatusCode() != 200) {
+                            throw new RuntimeException("API request failed with status: " + 
+                                response.getStatusLine().getStatusCode());
+                        }
+                        
+                        BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(response.getEntity().getContent())
+                        );
+                        
                         String line;
-
-                        // 逐行读取流式响应
                         while ((line = reader.readLine()) != null) {
-                            // SSE协议数据行以"data: "开头
                             if (line.startsWith("data: ")) {
-                                String jsonData = line.substring(6); // 去除"data: "前缀
-
-                                // 流结束标记
-                                if ("[DONE]".equals(jsonData)) {
+                                String data = line.substring(6);
+                                if ("[DONE]".equals(data)) {
                                     break;
                                 }
-
-                                // 解析JSON数据
-                                JsonNode node = objectMapper.readTree(jsonData);
-
-                                // 提取响应内容（路径：choices[0].delta.content）
+                                
+                                JsonNode node = objectMapper.readTree(data);
                                 String content = node.path("choices")
-                                        .path(0)
-                                        .path("delta")
-                                        .path("content")
-                                        .asText("");
-
-                                // 发送有效内容到客户端
+                                                   .path(0)
+                                                   .path("delta")
+                                                   .path("content")
+                                                   .asText("");
+                                
                                 if (!content.isEmpty()) {
-                                    emitter.send(content);       // 流式发送片段
-                                    aiResponse.append(content); // 累积完整响应
+                                    emitter.send(content);
                                 }
                             }
                         }
-
-                        // --- 历史记录更新 ---
-                        // 构造AI回复消息
-                        Map<String, String> aiMessage = new HashMap<>();
-                        aiMessage.put("role", "assistant"); // 消息角色：AI助手
-                        aiMessage.put("content", aiResponse.toString()); // 完整回复内容
-
-                        messages.add(aiMessage); // 将AI回复加入历史
-                        sessionHistory.put(userId, messages); // 更新会话状态
-
-                        log.info("流式请求处理完成，问题: {}", question);
-                        emitter.complete(); // 正常结束流
-                    }
-                } catch (Exception e) {
-                    log.error("DeepSeek API请求处理异常", e);
-                    try {
-                        // 发送错误消息到前端
-                        emitter.send("AI聊天服务暂时不可用，请稍后再试。错误信息: " + e.getMessage());
-                        emitter.complete();
-                    } catch (Exception ex) {
-                        emitter.completeWithError(e);
                     }
                 }
+                
+                emitter.complete();
+                
             } catch (Exception e) {
-                log.error("请求处理流程异常", e);
-                emitter.completeWithError(e);
+                log.error("Chat processing error", e);
+                try {
+                    emitter.send("处理请求时发生错误，请稍后重试");
+                    emitter.complete();
+                } catch (Exception ex) {
+                    emitter.completeWithError(ex);
+                }
             }
         });
-
+        
         return emitter;
     }
 
@@ -379,4 +348,199 @@ public class OpenAIController {
         prompt.append("\n请根据以上信息，推荐最适合的导师，并说明推荐理由。");
         return prompt.toString();
     }
+
+    @PostMapping("/direction/intro")
+    public SseEmitter getDirectionIntro(@RequestBody Map<String, String> request) {
+        SseEmitter emitter = new SseEmitter();
+        
+        executorService.execute(() -> {
+            try {
+                // 构建消息
+                List<Map<String, String>> messages = new ArrayList<>();
+                
+                // 添加系统消息
+                Map<String, String> systemMessage = new HashMap<>();
+                systemMessage.put("role", "system");
+                systemMessage.put("content", 
+                    "你是一个专业的研究方向介绍助手。请用专业且易懂的方式介绍研究方向，要求：\n" +
+                    "- 使用markdown格式\n" +
+                    "- 按照基本概念、主要研究内容、应用场景、最新研究热点等方面展开\n" +
+                    "- 不要使用数字编号，改用描述性的小标题\n" +
+                    "- 语言要专业且平实，避免过于学术化的表达\n" +
+                    "- 确保内容的逻辑性和连贯性\n" +
+                    "- 适当使用换行来提高可读性\n" +
+                    "- 内容大约150字。"
+                );
+                messages.add(systemMessage);
+                
+                // 添加用户消息
+                Map<String, String> userMessage = new HashMap<>();
+                userMessage.put("role", "user");
+                userMessage.put("content", 
+                    "请介绍" + request.get("direction") + "这个研究方向。\n" +
+                    "要求：\n" +
+                    "- 从基础概念开始，循序渐进地展开介绍\n" +
+                    "- 重点突出该方向的研究价值和应用前景\n" +
+                    "- 提到一些最新的研究进展和未来趋势"
+                );
+                messages.add(userMessage);
+                
+                // 构建请求体
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("model", "deepseek-chat");
+                requestBody.put("messages", messages);
+                requestBody.put("stream", true);
+                
+                try (CloseableHttpClient client = HttpClients.createDefault()) {
+                    HttpPost httpPost = new HttpPost(getApiUrl());
+                    httpPost.setHeader("Content-Type", "application/json");
+                    httpPost.setHeader("Authorization", "Bearer " + API_KEY);
+                    
+                    String requestBodyJson = objectMapper.writeValueAsString(requestBody);
+                    httpPost.setEntity(new StringEntity(requestBodyJson, StandardCharsets.UTF_8));
+                    
+                    try (CloseableHttpResponse response = client.execute(httpPost)) {
+                        if (response.getStatusLine().getStatusCode() != 200) {
+                            throw new RuntimeException("API request failed with status: " + 
+                                response.getStatusLine().getStatusCode());
+                        }
+                        
+                        StringBuilder messageBuilder = new StringBuilder();
+                        try (BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))) {
+                            
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                if (line.startsWith("data: ")) {
+                                    String content = line.substring(6).trim();
+                                    if ("[DONE]".equals(content)) {
+                                        break;
+                                    }
+                                    
+                                    try {
+                                        JsonNode node = objectMapper.readTree(content);
+                                        String text = node.path("choices")
+                                                       .path(0)
+                                                       .path("delta")
+                                                       .path("content")
+                                                       .asText("");
+                                        
+                                        if (!text.isEmpty()) {
+                                            // Remove "data:" prefix and handle line breaks
+                                            text = text.replace("data:", "").trim();
+                                            messageBuilder.append(text);
+                                            
+                                            // Send complete sentences or paragraphs
+                                            if (text.endsWith(".") || text.endsWith("。") || 
+                                                text.endsWith("\n") || text.endsWith("：")) {
+                                                emitter.send(messageBuilder.toString());
+                                                messageBuilder.setLength(0);
+                                            }
+                                        }
+                                    } catch (JsonProcessingException e) {
+                                        log.error("Error processing JSON response", e);
+                                    }
+                                }
+                            }
+                            
+                            // Send any remaining content
+                            if (messageBuilder.length() > 0) {
+                                emitter.send(messageBuilder.toString());
+                            }
+                        }
+                    }
+                }
+                
+                emitter.complete();
+                
+            } catch (Exception e) {
+                log.error("处理研究方向介绍请求失败", e);
+                try {
+                    emitter.send("获取研究方向介绍失败，请稍后重试");
+                    emitter.complete();
+                } catch (Exception ex) {
+                    emitter.completeWithError(ex);
+                }
+            }
+        });
+        
+        return emitter;
+    }
+
+    private void handleStreamResponse(Map<String, Object> requestBody, SseEmitter emitter) {
+        StringBuilder messageBuilder = new StringBuilder();
+        
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+            HttpPost httpPost = new HttpPost(getApiUrl());
+            httpPost.setHeader("Content-Type", "application/json");
+            httpPost.setHeader("Authorization", "Bearer " + API_KEY);
+
+            String requestBodyJson = objectMapper.writeValueAsString(requestBody);
+            httpPost.setEntity(new StringEntity(requestBodyJson, StandardCharsets.UTF_8));
+
+            try (CloseableHttpResponse response = client.execute(httpPost)) {
+                int statusCode = response.getStatusLine().getStatusCode();
+                if (statusCode != 200) {
+                    String errorMessage = "DeepSeek API返回错误状态码: " + statusCode;
+                    log.error(errorMessage);
+                    emitter.send(errorMessage);
+                    emitter.complete();
+                    return;
+                }
+
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))) {
+
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.startsWith("data: ")) {
+                            String jsonData = line.substring(6);
+                            
+                            if ("[DONE]".equals(jsonData)) {
+                                break;
+                            }
+
+                            JsonNode node = objectMapper.readTree(jsonData);
+                            String content = node.path("choices")
+                                    .path(0)
+                                    .path("delta")
+                                    .path("content")
+                                    .asText("");
+
+                            if (!content.isEmpty()) {
+                                messageBuilder.append(content);
+                                
+                                // 当收集到一个完整的段落或句子时发送
+                                if (content.contains(".") || content.contains("。") || 
+                                    content.contains("\n") || content.contains("；")) {
+                                    String message = messageBuilder.toString();
+                                    emitter.send(message);
+                                    messageBuilder.setLength(0);
+                                }
+                            }
+                        }
+                    }
+
+                    // 发送剩余的内容
+                    if (messageBuilder.length() > 0) {
+                        emitter.send(messageBuilder.toString());
+                    }
+
+                    emitter.complete();
+                }
+            }
+        } catch (Exception e) {
+            log.error("处理流式响应失败", e);
+            try {
+                emitter.send("获取研究方向介绍失败，请稍后重试");
+                emitter.complete();
+            } catch (Exception ex) {
+                emitter.completeWithError(ex);
+            }
+        }
+    }
 }
+
+
+
+
