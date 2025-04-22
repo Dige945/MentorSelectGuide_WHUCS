@@ -30,4 +30,10 @@ app.use(store)
 app.use(ElementPlus)
 app.use(VueKinesis)
 app.use(AOS.init())
+
+// 添加全局过渡动画
+app.config.globalProperties.$transition = {
+  'transition': 'all 0.3s ease'
+}
+
 app.mount('#app')

@@ -12,6 +12,7 @@ import Profile from '../views/Profile.vue'
 import AIRecommend from '../views/AIRecommend.vue'
 import About from '../views/About.vue'
 import store from '../store'
+import ForumView from '../views/Forum.vue'
 
 const routes = [
   {
@@ -28,6 +29,14 @@ const routes = [
     component: Teachers,
     meta: {
       title: '教师列表'
+    }
+  },
+  {
+    path: '/forum',
+    name: 'ForumView',
+    component: ForumView,
+    meta: {
+      title: '论坛'
     }
   },
   {
