@@ -17,11 +17,8 @@ public class CorsConfig {
                         // 允许的前端地址列表（推荐使用模式匹配）
                         .allowedOriginPatterns(
                                 "http://localhost:9876",
-                                "http://localhost:9877",
-                                "http://10.132.0.7:9876",
-                                "http://10.132.0.7:9877"
-//                                "http://127.0.0.1:8080",
-//                                "https://your-production-domain.com"
+                                "http://47.122.112.16:9876",  // 添加你的前端域名
+                                "http://你的域名.com"          // 如果有域名也要添加
                         )
                         // 允许的 HTTP 方法
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
