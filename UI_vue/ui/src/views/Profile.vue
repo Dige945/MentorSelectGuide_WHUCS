@@ -113,15 +113,38 @@ export default {
     // 获取用户信息
     const fetchUserInfo = async () => {
       try {
-        const res = await request.get('/user/info')
+        // 从 store 中获取当前用户信息
+        const currentUser = store.state.user
+        if (!currentUser || !currentUser.username) {
+          ElMessage.error('未登录或登录已过期')
+          router.push('/login')
+          return
+        }
+
+        const res = await request.get('/user/info', {
+          headers: {
+            'Authorization': currentUser.username
+          }
+        })
+
         if (res.code === '0') {
-          userInfo.username = res.data.username
-          userInfo.email = res.data.email
+          const userData = res.data
+          userInfo.username = userData.username
+          userInfo.email = userData.email || ''
+          // 清空密码字段
+          userInfo.newPassword = ''
+          userInfo.confirmPassword = ''
         } else {
-          ElMessage.error('获取用户信息失败')
+          ElMessage.error(res.msg || '获取用户信息失败')
         }
       } catch (error) {
-        ElMessage.error('获取用户信息失败：' + error.message)
+        console.error('获取用户信息失败:', error)
+        if (error.response?.status === 401) {
+          ElMessage.error('未登录或登录已过期')
+          router.push('/login')
+        } else {
+          ElMessage.error('获取用户信息失败：' + (error.response?.data?.msg || error.message))
+        }
       }
     }
 
@@ -133,27 +156,43 @@ export default {
         await formRef.value.validate()
         loading.value = true
 
-        const updateData = {
-          username: userInfo.username,
-          email: userInfo.email,
-          oldPassword: '',
-          newPassword: userInfo.newPassword || ''
+        const currentUser = store.state.user
+        if (!currentUser || !currentUser.username) {
+          ElMessage.error('未登录或登录已过期')
+          router.push('/login')
+          return
         }
 
-        const res = await request.post('/user/update', updateData)
+        const updateData = {
+          id: currentUser.id,
+          username: userInfo.username,
+          email: userInfo.email,
+          password: userInfo.newPassword || undefined // 只在有新密码时更新
+        }
+
+        const res = await request.post('/user/update', updateData, {
+          headers: {
+            'Authorization': currentUser.username
+          }
+        })
+
         if (res.code === '0') {
           ElMessage.success('个人信息更新成功')
           // 清空密码字段
           userInfo.newPassword = ''
           userInfo.confirmPassword = ''
+          // 更新 store 中的用户信息
+          store.dispatch('updateUserInfo', res.data)
         } else {
           ElMessage.error(res.msg || '更新失败')
         }
       } catch (error) {
-        if (error.response && error.response.data) {
-          ElMessage.error(error.response.data.msg || '更新失败')
+        console.error('更新用户信息失败:', error)
+        if (error.response?.status === 401) {
+          ElMessage.error('未登录或登录已过期')
+          router.push('/login')
         } else {
-          ElMessage.error(error.message || '更新失败')
+          ElMessage.error(error.response?.data?.msg || error.message || '更新失败')
         }
       } finally {
         loading.value = false
