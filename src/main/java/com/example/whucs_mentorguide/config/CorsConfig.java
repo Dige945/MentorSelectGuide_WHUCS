@@ -17,6 +17,7 @@ public class CorsConfig {
                         // 允许的前端地址列表（推荐使用模式匹配）
                         .allowedOriginPatterns(
                                 "http://localhost:9876",
+                                "http://localhost:9877",
                                 "http://47.122.112.16:9876",  // 添加你的前端域名
                                 "http://你的域名.com"          // 如果有域名也要添加
                         )

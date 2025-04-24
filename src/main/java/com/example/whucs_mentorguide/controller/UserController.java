@@ -15,11 +15,12 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     @Resource
     UserMapper userMapper;
+
     @ResponseBody
     @PostMapping
-    public Result<?> save(@RequestBody User user){
-//        System.out.println(user);
-        if(user.getPassword() == null){
+    public Result<?> save(@RequestBody User user) {
+        // System.out.println(user);
+        if (user.getPassword() == null) {
             user.setPassword("123456");
         }
         userMapper.insert(user);
@@ -27,8 +28,8 @@ public class UserController {
     }
 
     @PutMapping
-    public Result<?> update(@RequestBody User user){
-        if(user.getAvatar() == null){
+    public Result<?> update(@RequestBody User user) {
+        if (user.getAvatar() == null) {
             user.setAvatar("../photos/default.jpg");
         }
         userMapper.updateById(user);
@@ -38,48 +39,49 @@ public class UserController {
 
     @GetMapping
     public Result<?> findPage(@RequestParam(defaultValue = "1") Integer pageNum,
-                              @RequestParam(defaultValue = "10") Integer pageSize,
-                              @RequestParam(defaultValue = "") String search){
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(defaultValue = "") String search) {
         LambdaQueryWrapper<User> wrapper = Wrappers.<User>lambdaQuery();
-        if(StrUtil.isNotBlank(search)){
-            wrapper.like(User::getNickname,search);
+        if (StrUtil.isNotBlank(search)) {
+            wrapper.like(User::getNickname, search);
         }
-        Page<User> userPage = userMapper.selectPage(new Page<>(pageNum,pageSize), wrapper);
+        Page<User> userPage = userMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         return Result.success(userPage);
     }
 
     @GetMapping("/{id}")
-    public Result<?> findById(@PathVariable Integer id){
-//        System.out.println(id);
+    public Result<?> findById(@PathVariable Integer id) {
+        // System.out.println(id);
         User user = userMapper.selectById(id);
-//        System.out.println(user);
+        // System.out.println(user);
         return Result.success(user);
     }
 
     @DeleteMapping("/{id}")
-    public Result<?> delete(@PathVariable Integer id){
+    public Result<?> delete(@PathVariable Integer id) {
         userMapper.deleteById(id);
         return Result.success();
     }
 
     @ResponseBody
     @PostMapping("/login")
-    public Result<?> login(@RequestBody User user){
-        User res = userMapper.selectOne(Wrappers.<User>lambdaQuery().eq(User::getUsername,user.getUsername()).eq(User::getPassword,user.getPassword()));
-        if(res == null){
-            return Result.error("-1","用户名或密码错误");
+    public Result<?> login(@RequestBody User user) {
+        User res = userMapper.selectOne(Wrappers.<User>lambdaQuery().eq(User::getUsername, user.getUsername())
+                .eq(User::getPassword, user.getPassword()));
+        if (res == null) {
+            return Result.error("-1", "用户名或密码错误");
         }
         return Result.success(res);
     }
 
     @ResponseBody
     @PostMapping("/register")
-    public Result<?> register(@RequestBody User user){
-        User res = userMapper.selectOne(Wrappers.<User>lambdaQuery().eq(User::getUsername,user.getUsername()));
-        if(res != null){
-            return Result.error("-1","用户名已存在");
+    public Result<?> register(@RequestBody User user) {
+        User res = userMapper.selectOne(Wrappers.<User>lambdaQuery().eq(User::getUsername, user.getUsername()));
+        if (res != null) {
+            return Result.error("-1", "用户名已存在");
         }
-        if(user.getPassword() == null){
+        if (user.getPassword() == null) {
             user.setPassword("123456");
         }
         userMapper.insert(user);
@@ -95,24 +97,61 @@ public class UserController {
             return Result.error("-1", "用户不存在");
         }
 
-        // 如果提供了新密码，则更新密码
+        // 更新所有允许修改的字段
+        if (user.getUsername() != null) {
+            existingUser.setUsername(user.getUsername());
+        }
+        if (user.getEmail() != null) {
+            existingUser.setEmail(user.getEmail());
+        }
         if (user.getPassword() != null && !user.getPassword().isEmpty()) {
             existingUser.setPassword(user.getPassword());
         }
-
+        if (user.getNickname() != null) {
+            existingUser.setNickname(user.getNickname());
+        }
+        if (user.getAge() != null) {
+            existingUser.setAge(user.getAge());
+        }
+        if (user.getSex() != null) {
+            existingUser.setSex(user.getSex());
+        }
+        if (user.getAddress() != null) {
+            existingUser.setAddress(user.getAddress());
+        }
+        if (user.getBirthday() != null) {
+            existingUser.setBirthday(user.getBirthday());
+        }
+        if (user.getAvatar() != null) {
+            existingUser.setAvatar(user.getAvatar());
+        }
 
         // 更新用户信息
-        userMapper.updateById(existingUser);
-        return Result.success();
+        int result = userMapper.updateById(existingUser);
+        if (result > 0) {
+            return Result.success(existingUser);
+        } else {
+            return Result.error("-1", "更新失败");
+        }
     }
 
     @ResponseBody
     @GetMapping("/info")
-    public Result<?> getUserInfo(@RequestParam String username) {
+    public Result<?> getUserInfo(@RequestHeader("Authorization") String token) {
+        // 从 token 中获取用户名
+        String username = token; // 这里需要根据实际的 token 解析逻辑来获取用户名
+        if (username == null || username.isEmpty()) {
+            return Result.error("-1", "未登录或登录已过期");
+        }
+
+        // 根据用户名查询用户信息
         User user = userMapper.selectOne(Wrappers.<User>lambdaQuery().eq(User::getUsername, username));
         if (user == null) {
             return Result.error("-1", "用户不存在");
         }
+
+        // 不返回密码信息
+        user.setPassword(null);
         return Result.success(user);
     }
 }

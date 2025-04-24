@@ -13,6 +13,7 @@ import AIRecommend from '../views/AIRecommend.vue'
 import About from '../views/About.vue'
 import store from '../store'
 import ForumView from '../views/Forum.vue'
+import { ElMessage } from 'element-plus'
 
 const routes = [
   {
@@ -115,6 +116,21 @@ const routes = [
     }
   },
   {
+    path: '/news',
+    name: 'News',
+    component: () => import('@/views/News.vue')
+  },
+  {
+    path: '/news_management',
+    name: 'NewsManagement',
+    component: () => import('@/views/NewsManagement.vue'),
+    meta: {
+      title: '新闻管理',
+      requiresAuth: true,
+      allowedRoles: ['ghy', 'admin']
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: NotFound,
@@ -143,6 +159,16 @@ router.beforeEach(async (to, from, next) => {
         query: { redirect: to.fullPath }
       })
       return
+    }
+
+    // 检查特定角色权限
+    if (to.meta.allowedRoles) {
+      const user = store.state.user
+      if (!user || !to.meta.allowedRoles.includes(user.username)) {
+        ElMessage.error('您没有权限访问此页面')
+        next(from.path || '/')
+        return
+      }
     }
   }
 
