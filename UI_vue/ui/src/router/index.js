@@ -125,6 +125,7 @@ const routes = [
     name: 'NewsManagement',
     component: () => import('@/views/NewsManagement.vue'),
     meta: {
+      title: '新闻管理',
       requiresAuth: true,
       allowedRoles: ['ghy', 'admin']
     }
