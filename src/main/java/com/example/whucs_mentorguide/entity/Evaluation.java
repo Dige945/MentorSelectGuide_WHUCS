@@ -14,14 +14,11 @@ public class Evaluation {
     @TableId(type = IdType.AUTO)
     private Integer id;
 
-
     @TableField("teacherId")
     private Integer teacherId;
 
     @TableField("userId")
     private String userId;
-
-
 
     @TableField("teacherName")
     private String teacherName;

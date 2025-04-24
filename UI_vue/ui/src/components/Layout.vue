@@ -24,6 +24,13 @@
               <el-menu-item index="/teachers">导师列表</el-menu-item>
               <el-menu-item index="/research">科研方向</el-menu-item>
               <el-menu-item index="/forum">论坛</el-menu-item>
+<!--              <el-menu-item index="/news">最新动态</el-menu-item>-->
+              <el-menu-item 
+                v-if="hasNewsManagementPermission" 
+                index="/news_management"
+              >
+                新闻管理
+              </el-menu-item>
               <el-menu-item @click="handleAIRecommend">智能推荐</el-menu-item>
               <el-menu-item index="/about">关于我们</el-menu-item>
             </el-menu>
@@ -111,11 +118,37 @@
 <script>
 import { ArrowDown } from '@element-plus/icons-vue'
 import { mapState, mapGetters } from 'vuex'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useStore } from 'vuex'
 
 export default {
   name: 'AppLayout',
   components: {
     ArrowDown
+  },
+  setup() {
+    const router = useRouter()
+    const store = useStore()
+    
+    // 检查是否有新闻管理权限
+    const hasNewsManagementPermission = computed(() => {
+      const user = store.state.user
+      if (!user) return false
+      
+      // 获取新闻管理路由的配置
+      const newsManagementRoute = router.options.routes.find(route => route.name === 'NewsManagement')
+      if (!newsManagementRoute || !newsManagementRoute.meta || !newsManagementRoute.meta.allowedRoles) {
+        return false
+      }
+      
+      // 检查用户是否在允许的角色列表中
+      return newsManagementRoute.meta.allowedRoles.includes(user.username)
+    })
+
+    return {
+      hasNewsManagementPermission
+    }
   },
   computed: {
     ...mapState(['user']),

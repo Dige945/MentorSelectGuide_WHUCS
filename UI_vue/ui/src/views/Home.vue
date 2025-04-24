@@ -8,7 +8,7 @@
       <kinesis-container>
         <kinesis-element :strength="20" type="depth">
           <div class="hero-content" data-aos="fade-up">
-            <h1>武汉大学计算机学院导师推荐系统</h1>
+            <h1>基于大语言模型Agent的导师推荐系统</h1>
             <p class="gradient-text">发现最适合您的研究导师，开启科研之旅</p>
           </div>
         </kinesis-element>
@@ -76,6 +76,16 @@
         <HotTeachers />
       </div>
 
+      <!-- 新闻展示 -->
+      <div class="section-container news-section">
+        <div class="section-header">
+          <h2 class="gradient-text">最新动态</h2>
+        </div>
+        <el-card class="news-card" :body-style="{ padding: '0' }">
+          <News />
+        </el-card>
+      </div>
+
       <!-- 最近评论卡片 -->
       <div class="section-container reviews-section">
         <div class="section-header">
@@ -101,27 +111,40 @@
           </div>
         </el-card>
       </div>
+
+      <!-- 管理新闻按钮
+      <div class="admin-actions" v-if="hasNewsManagementPermission">
+        <el-button type="primary" @click="goToNewsManagement">
+          <el-icon><Edit /></el-icon>
+          管理新闻
+        </el-button>
+      </div> -->
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
-import { Search, User, Collection, Medal } from '@element-plus/icons-vue'
+import { ref, onMounted, computed } from 'vue'
+import { Search, User, Collection, Medal, Edit } from '@element-plus/icons-vue'
 import { useElementSize } from '@vueuse/core'
 import gsap from 'gsap'
 import HotTeachers from '@/components/HotTeachers.vue'
+import News from '@/views/News.vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
+import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'Home',
   components: {
     HotTeachers,
+    News,
     Search,
     User,
     Collection,
-    Medal
+    Medal,
+    Edit
   },
   setup() {
     const searchKeyword = ref('')
@@ -130,6 +153,23 @@ export default {
     let searchTimer = null
     const recentReviews = ref([])
     const loading = ref(false)
+    const store = useStore()
+    const router = useRouter()
+
+    // 检查是否有新闻管理权限
+    const hasNewsManagementPermission = computed(() => {
+      const user = store.state.user
+      if (!user) return false
+      
+      // 获取新闻管理路由的配置
+      const newsManagementRoute = router.options.routes.find(route => route.name === 'NewsManagement')
+      if (!newsManagementRoute || !newsManagementRoute.meta || !newsManagementRoute.meta.allowedRoles) {
+        return false
+      }
+      
+      // 检查用户是否在允许的角色列表中
+      return newsManagementRoute.meta.allowedRoles.includes(user.username)
+    })
 
     const handleSearch = () => {
       if (searchTimer) {
@@ -243,6 +283,11 @@ export default {
       }
     }
 
+    // 跳转到新闻管理页面
+    const goToNewsManagement = () => {
+      router.push('/news_management')
+    }
+
     onMounted(() => {
       // 添加数字增长动画
       stats.value.forEach((stat, index) => {
@@ -275,7 +320,9 @@ export default {
       stats,
       recentReviews,
       loading,
-      formatTime
+      formatTime,
+      hasNewsManagementPermission,
+      goToNewsManagement
     }
   }
 }
@@ -618,6 +665,43 @@ export default {
   padding: 40px 0;
   font-size: 14px;
   font-weight: 400;
+}
+
+.news-section {
+  margin-top: 40px;
+}
+
+.news-card {
+  margin: 0 auto;
+  max-width: 800px;
+  background-color: #fff;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.news-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.admin-actions {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.admin-actions .el-button {
+  padding: 12px 20px;
+  font-size: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.admin-actions .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
 }
 </style> 
 
