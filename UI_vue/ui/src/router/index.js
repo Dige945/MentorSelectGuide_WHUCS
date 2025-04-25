@@ -13,6 +13,7 @@ import AIRecommend from '../views/AIRecommend.vue'
 import About from '../views/About.vue'
 import store from '../store'
 import ForumView from '../views/Forum.vue'
+import DataView from '../views/DataView.vue'
 import { ElMessage } from 'element-plus'
 
 const routes = [
@@ -30,6 +31,14 @@ const routes = [
     component: Teachers,
     meta: {
       title: '教师列表'
+    }
+  },
+  {
+    path: '/dataview',
+    name: 'DateView',
+    component: DataView,
+    meta: {
+      title: '可视化'
     }
   },
   {
