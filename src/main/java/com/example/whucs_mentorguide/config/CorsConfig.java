@@ -19,7 +19,7 @@ public class CorsConfig {
                                 "http://localhost:9876",
                                 "http://localhost:9877",
                                 "http://47.122.112.16:9876",  // 添加你的前端域名
-                                "http://你的域名.com"          // 如果有域名也要添加
+                                "http://whucsmentorguide.asia"          // 如果有域名也要添加
                         )
                         // 允许的 HTTP 方法
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
