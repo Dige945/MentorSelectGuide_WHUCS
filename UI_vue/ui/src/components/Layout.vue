@@ -25,8 +25,6 @@
               <el-menu-item index="/research">科研方向</el-menu-item>
               <el-menu-item index="/forum">论坛</el-menu-item>
               <el-menu-item index="/dataview">可视化</el-menu-item>
-
-<!--              <el-menu-item index="/news">最新动态</el-menu-item>-->
               <el-menu-item 
                 v-if="hasNewsManagementPermission" 
                 index="/news_management"
