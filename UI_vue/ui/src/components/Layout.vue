@@ -9,7 +9,7 @@
         <div class="header-container glassmorphism">
           <div class="logo">
             <router-link to="/" class="logo-link">
-              <h1>ChooseYourMentor_WHUCS</h1>
+              <h1>ChooseYourMentor</h1>
             </router-link>
           </div>
           <div class="nav-menu">
@@ -107,7 +107,7 @@
             </div>
           </div>
           <div class="copyright">
-            <p>&copy; 2023 武汉大学特软2班SETeam 版权所有</p>
+            <p>&copy; ChooseYourMentorSETeam 版权所有</p>
           </div>
         </div>
       </el-footer>

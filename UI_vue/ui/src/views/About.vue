@@ -10,7 +10,8 @@
       <div class="about-content">
         <div class="section fade-in">
           <h3 class="section-title">项目介绍</h3>
-          <p class="section-text">武汉大学计算机学院导师选择指南系统是一个为计算机学院学生提供导师选择参考的智能平台。本系统整合了学院导师信息，通过智能推荐算法，帮助学生找到最适合自己的导师。</p>
+          <p class="section-text">基于大模型Agent的导师智能推荐系统是一个为学生提供导师选择参考的智能平台。本系统整合了学院导师信息，通过智能推荐算法，帮助学生找到最适合自己的导师。同时，本系统还融合了学科科研的
+          的多方面信息，为学生提供更加全面的参考。</p>
         </div>
 
         <div class="section fade-in">
@@ -52,7 +53,7 @@
             <el-col :span="12">
               <div class="contact-info">
                 <p><el-icon><Location /></el-icon> 地址：湖北省武汉市武汉大学计算机学院</p>
-                <p><el-icon><Phone /></el-icon> 电话：027-6877XXXX</p>
+                <p><el-icon><Phone /></el-icon> 电话：暂无</p>
                 <p><el-icon><Message /></el-icon> 邮箱：mentorguide@whu.edu.cn</p>
               </div>
             </el-col>
