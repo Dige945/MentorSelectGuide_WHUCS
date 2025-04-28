@@ -10,6 +10,8 @@
 - RESTful API 设计
 - 标签化导师筛选
 - 智能化导师匹配算法
+- 响应式设计和现代化UI
+- 数据可视化展示
 
 ## 技术栈
 
@@ -17,9 +19,16 @@
 - **核心框架**: Vue 3
 - **UI组件库**: Element Plus
 - **路由管理**: Vue Router 4
-- **HTTP客户端**: Fetch API
+- **状态管理**: Vuex 4
+- **HTTP客户端**: Axios
 - **图标库**: Element Plus Icons
 - **Markdown渲染**: Marked
+- **动画效果**: 
+  - GSAP
+  - AOS
+  - Vue Kinesis
+  - @vueuse/motion
+- **数据可视化**: ECharts
 - **开发工具**: Vue CLI
 
 ### 后端
@@ -42,12 +51,17 @@
 - 基础页面框架
 - 导师信息展示
 - 标签化筛选系统
-
-### 待实现功能
-- 科研方向信息查询系统
-- 教师评价系统
+- 数据可视化展示
+- 新闻管理系统
+- 论坛交流功能
+- 科研方向查询
 - 用户认证系统
 - 个人中心
+
+### 待实现功能
+- 教师评价系统
+- 高级数据分析功能
+- 智能匹配算法优化
 
 ## 项目结构
 
@@ -59,30 +73,43 @@ MentorSelectGuide_WHUCS/
 │       ├── src/
 │       │   ├── assets/      # 资源文件
 │       │   ├── components/  # 通用组件
-│       │   │   ├── Header/  # 头部组件
-│       │   │   └── Footer/  # 底部组件
+│       │   │   ├── Layout/  # 布局组件
+│       │   │   ├── HotTeachers/  # 热门导师组件
+│       │   │   └── ResearchAreas/  # 研究方向组件
 │       │   ├── router/      # 路由配置
+│       │   ├── store/       # Vuex状态管理
+│       │   ├── utils/       # 工具函数
 │       │   ├── views/       # 页面组件
 │       │   │   ├── Home/    # 首页
 │       │   │   ├── AIRecommend/  # AI推荐页
-│       │   │   └── About/   # 关于页面
+│       │   │   ├── About/   # 关于页面
+│       │   │   ├── News/    # 新闻页面
+│       │   │   ├── DataView/  # 数据可视化
+│       │   │   ├── Profile/  # 个人中心
+│       │   │   ├── Forum/   # 论坛页面
+│       │   │   ├── ResearchDirection/  # 研究方向
+│       │   │   ├── Teachers/  # 导师列表
+│       │   │   ├── TeacherDetail/  # 导师详情
+│       │   │   ├── Login/    # 登录页面
+│       │   │   └── Register/  # 注册页面
 │       │   ├── App.vue      
 │       │   └── main.js      
 │       └── package.json     
 │
-└── src/                     # 后端项目
-    ├── main/
-    │   ├── java/
-    │   │   └── com/example/whucs_mentorguide/
-    │   │       ├── controller/    # 控制器
-    │   │       │   └── OpenAIController.java  # AI对话控制器
-    │   │       ├── service/       # 服务层
-    │   │       ├── model/         # 数据模型
-    │   │       └── config/        # 配置类
-    │   └── resources/
-    │       ├── application.properties  # 应用配置
-    │       └── templates/         # 模板文件
-    └── test/                # 测试目录
+├── server/                  # 后端项目
+│   └── src/
+│       ├── main/
+│       │   ├── java/
+│       │   │   └── com/example/whucs_mentorguide/
+│       │   │       ├── controller/    # 控制器
+│       │   │       ├── service/       # 服务层
+│       │   │       ├── model/         # 数据模型
+│       │   │       └── config/        # 配置类
+│       │   └── resources/
+│       │       └── application.properties
+│       └── test/                # 测试目录
+│
+└── 数据库数据/               # 数据库相关文件
 ```
 
 ## 快速开始
@@ -92,6 +119,7 @@ MentorSelectGuide_WHUCS/
 - Java >= 17
 - Maven >= 3.6
 - MySQL >= 8.0
+- npm >= 6.0.0
 
 ### 前端启动
 ```bash
@@ -165,6 +193,9 @@ java -jar target/whucs-mentorguide.jar
 3. 添加用户反馈功能
 4. 优化页面响应速度
 5. 实现数据缓存机制
+6. 增强数据可视化展示
+7. 优化动画效果
+8. 完善移动端适配
 
 ### 长期计划
 1. 开发移动端应用
@@ -172,6 +203,8 @@ java -jar target/whucs-mentorguide.jar
 3. 实现智能化教学资源推荐
 4. 建立导师评价体系
 5. 开发管理员后台系统
+6. 引入机器学习模型优化推荐算法
+7. 建立完整的用户画像系统
 
 ## 贡献指南
 
