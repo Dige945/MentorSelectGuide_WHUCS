@@ -132,6 +132,25 @@ export default {
       this.recommendation = '';
 
       try {
+        // 先检查是否可以使用AI推荐
+        const checkResponse = await fetch('/api/deepSeek/recommend/can-use');
+        const checkResult = await checkResponse.json();
+
+        if (!checkResult.success || !checkResult.canUse) {
+          // 如果不能使用，显示提示并使用本地推荐
+          this.$message.warning(`您今天的AI推荐次数已用完（每天限制${checkResult.maxCount || 2}次），请明天再试。`);
+          this.useLocalRecommend();
+          this.isLoading = false;
+          return;
+        }
+        
+        // 如果是最后一次使用，提醒用户
+        if (checkResult.remainingCount === 1) {
+          this.$message.info(`这是您今天最后一次使用AI推荐，明天再来！`);
+        } else if (checkResult.remainingCount > 1) {
+          this.$message.info(`您今天还可以使用AI推荐${checkResult.remainingCount - 1}次。`);
+        }
+
         // 确保教师数据已加载
         if (this.teachers.length === 0) {
           await this.loadTeachers();

@@ -15,10 +15,12 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -70,6 +72,20 @@ public class OpenAIController {
      */
     private final Map<String, List<Map<String, String>>> sessionHistory = new ConcurrentHashMap<>();
 
+    // AI推荐使用次数限制缓存
+    // Key: IP-日期, Value: 已使用次数
+    private static final Map<String, Integer> recommendLimitCache = new ConcurrentHashMap<>();
+    
+    // 研究方向介绍请求限制缓存
+    // Key: IP-方向名称, Value: true(已请求过)
+    private static final Map<String, Boolean> directionIntroCache = new ConcurrentHashMap<>();
+    
+    // 上次清理缓存的日期
+    private static LocalDate lastCleanupDate = LocalDate.now();
+    
+    // 每天最大调用次数
+    private static final int MAX_RECOMMEND_CALLS_PER_DAY = 2;
+
     // 异步任务线程池（缓存线程池，适合短生命周期的任务）
     private final ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -85,6 +101,57 @@ public class OpenAIController {
     public ModelAndView chat(ModelAndView modelAndView) {
         modelAndView.setViewName("chat"); // 对应resources/templates/chat.html
         return modelAndView;
+    }
+
+    // 获取客户端IP
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // 多个代理的情况，第一个IP为真实IP
+        if (ip != null && ip.indexOf(",") > 0) {
+            ip = ip.substring(0, ip.indexOf(","));
+        }
+        return ip;
+    }
+    
+    // 清理过期缓存记录（不同日期的）
+    private void cleanupExpiredRecords() {
+        LocalDate today = LocalDate.now();
+        if (!today.equals(lastCleanupDate)) {
+            recommendLimitCache.clear();
+            // 不清理directionIntroCache，因为我们希望每个方向只查询一次
+            lastCleanupDate = today;
+            log.info("已清理过期AI推荐限制记录");
+        }
+    }
+    
+    // 检查是否达到每日调用限制
+    private boolean checkRecommendLimit(String clientIp) {
+        cleanupExpiredRecords();
+        
+        String today = LocalDate.now().toString();
+        String limitKey = clientIp + "-" + today;
+        
+        Integer count = recommendLimitCache.getOrDefault(limitKey, 0);
+        boolean withinLimit = count < MAX_RECOMMEND_CALLS_PER_DAY;
+        
+        if (withinLimit) {
+            // 更新计数
+            recommendLimitCache.put(limitKey, count + 1);
+            log.info("更新AI推荐使用次数：{} -> {}/{}", clientIp, count + 1, MAX_RECOMMEND_CALLS_PER_DAY);
+        } else {
+            log.info("用户已达到每日AI推荐使用上限：{} -> {}/{}", clientIp, count, MAX_RECOMMEND_CALLS_PER_DAY);
+        }
+        
+        return withinLimit;
     }
 
     /**
@@ -183,7 +250,7 @@ public class OpenAIController {
     }
 
     @PostMapping(value = "/recommend", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter recommend(@RequestBody Map<String, Object> request) {
+    public SseEmitter recommend(@RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
         String userId = "123";
         SseEmitter emitter = new SseEmitter(-1L);
 
@@ -193,6 +260,16 @@ public class OpenAIController {
 
         executorService.execute(() -> {
             try {
+                // 获取客户端IP并检查使用限制
+                String clientIp = getClientIp(httpRequest);
+                log.info("客户端IP: {}", clientIp);
+                
+                if (!checkRecommendLimit(clientIp)) {
+                    emitter.send("您今天的AI推荐次数已用完（每天限制" + MAX_RECOMMEND_CALLS_PER_DAY + "次），请明天再试。");
+                    emitter.complete();
+                    return;
+                }
+                
                 log.info("开始处理推荐请求，请求内容: {}", request);
 
                 List<Map<String, String>> messages = sessionHistory.getOrDefault(userId, new ArrayList<>());
@@ -300,6 +377,46 @@ public class OpenAIController {
 
         return emitter;
     }
+    
+    /**
+     * 检查用户今天是否还可以使用AI推荐功能
+     * @param request HTTP请求，用于获取客户端IP
+     * @return 包含是否可用和剩余次数的结果
+     */
+    @GetMapping("/recommend/can-use")
+    public Map<String, Object> canUseRecommend(HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // 清理过期记录
+            cleanupExpiredRecords();
+            
+            // 获取客户端IP
+            String clientIp = getClientIp(request);
+            String today = LocalDate.now().toString();
+            String limitKey = clientIp + "-" + today;
+            
+            // 获取已使用次数
+            Integer usedCount = recommendLimitCache.getOrDefault(limitKey, 0);
+            boolean canUse = usedCount < MAX_RECOMMEND_CALLS_PER_DAY;
+            int remainingCount = MAX_RECOMMEND_CALLS_PER_DAY - usedCount;
+            
+            result.put("success", true);
+            result.put("canUse", canUse);
+            result.put("remainingCount", remainingCount);
+            result.put("maxCount", MAX_RECOMMEND_CALLS_PER_DAY);
+            
+            log.info("用户AI推荐使用情况检查: IP={}, 已用={}, 剩余={}", clientIp, usedCount, remainingCount);
+            
+        } catch (Exception e) {
+            log.error("检查AI推荐使用限制时发生错误", e);
+            result.put("success", false);
+            result.put("canUse", true); // 出错时默认允许使用，后端会再次验证
+            result.put("message", "检查失败: " + e.getMessage());
+        }
+        
+        return result;
+    }
 
     private String buildSystemPrompt(Map<String, Object> request) {
         return "你是一个专业的导师推荐系统。请根据用户的选择和偏好，推荐最适合的导师。\n\n" +
@@ -350,11 +467,35 @@ public class OpenAIController {
     }
 
     @PostMapping("/direction/intro")
-    public SseEmitter getDirectionIntro(@RequestBody Map<String, String> request) {
+    public SseEmitter getDirectionIntro(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
         SseEmitter emitter = new SseEmitter();
         
         executorService.execute(() -> {
             try {
+                // 获取当前方向名称
+                String directionName = request.get("direction");
+                if (directionName == null || directionName.trim().isEmpty()) {
+                    emitter.send("方向名称不能为空");
+                    emitter.complete();
+                    return;
+                }
+                
+                // 获取客户端IP
+                String clientIp = getClientIp(httpRequest);
+                String cacheKey = clientIp + "-" + directionName;
+                
+                // 检查是否已经请求过这个方向
+                if (directionIntroCache.containsKey(cacheKey)) {
+                    log.info("用户已请求过该研究方向介绍: IP={}, 方向={}", clientIp, directionName);
+                    emitter.send("您已经查询过这个研究方向的介绍，请尝试其他方向。");
+                    emitter.complete();
+                    return;
+                }
+                
+                // 记录该IP已请求过这个方向
+                directionIntroCache.put(cacheKey, true);
+                log.info("记录新的研究方向介绍请求: IP={}, 方向={}", clientIp, directionName);
+                
                 // 构建消息
                 List<Map<String, String>> messages = new ArrayList<>();
                 
@@ -377,7 +518,7 @@ public class OpenAIController {
                 Map<String, String> userMessage = new HashMap<>();
                 userMessage.put("role", "user");
                 userMessage.put("content", 
-                    "请介绍" + request.get("direction") + "这个研究方向。\n" +
+                    "请介绍" + directionName + "这个研究方向。\n" +
                     "要求：\n" +
                     "- 从基础概念开始，循序渐进地展开介绍\n" +
                     "- 重点突出该方向的研究价值和应用前景\n" +
@@ -672,6 +813,40 @@ public class OpenAIController {
             log.error("检测负面内容时发生错误", e);
             result.put("hasNegativeContent", false);
             result.put("message", "检测负面内容时发生错误: " + e.getMessage());
+        }
+        
+        return result;
+    }
+
+    /**
+     * 检查用户是否已经查询过某个研究方向
+     * @param request HTTP请求，用于获取客户端IP
+     * @param directionName 研究方向名称
+     * @return 包含是否可查询的结果
+     */
+    @GetMapping("/direction/can-query")
+    public Map<String, Object> canQueryDirection(HttpServletRequest request, @RequestParam String directionName) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // 获取客户端IP
+            String clientIp = getClientIp(request);
+            String cacheKey = clientIp + "-" + directionName;
+            
+            // 检查是否已查询过
+            boolean canQuery = !directionIntroCache.containsKey(cacheKey);
+            
+            result.put("success", true);
+            result.put("canQuery", canQuery);
+            result.put("directionName", directionName);
+            
+            log.info("检查研究方向查询权限: IP={}, 方向={}, 可查询={}", clientIp, directionName, canQuery);
+            
+        } catch (Exception e) {
+            log.error("检查研究方向查询权限时发生错误", e);
+            result.put("success", false);
+            result.put("canQuery", true); // 出错时默认允许查询，后端会再次验证
+            result.put("message", "检查失败: " + e.getMessage());
         }
         
         return result;
