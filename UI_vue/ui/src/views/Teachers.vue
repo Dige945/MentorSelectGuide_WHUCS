@@ -373,53 +373,112 @@ export default {
         return;
       }
 
+      // 显示加载动画
+      const loadingInstance = this.$loading({
+        lock: true,
+        text: '正在检查内容...',
+        background: 'rgba(0, 0, 0, 0.7)',
+        spinner: 'el-icon-loading',
+        fullscreen: true,
+        customClass: 'custom-loading'
+      });
+
       try {
-        console.log('准备提交评价数据:', {
-          teacherId: this.currentTeacher.id,
-          teacherName: this.currentTeacher.name,
-          content: this.reviewForm.content,
-          userId: "1" // 注意：现在是字符串类型
+        // 首先检查内容是否包含负面信息
+        console.log('开始检查负面内容，发送请求到:', '/api/deepSeek/check-negative-content');
+        console.log('请求内容:', this.reviewForm.content);
+        
+        const checkResponse = await axios.post('/api/deepSeek/check-negative-content', {
+          recommendationText: this.reviewForm.content
         });
-
-        // 调用后端API保存评价
-        const response = await axios.post('/api/evaluations/insert', {
-          teacherId: this.currentTeacher.id,
-          teacherName: this.currentTeacher.name,
-          content: this.reviewForm.content,
-          userId: "1" // 注意：现在是字符串类型
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log('服务器响应:', response);
-
-        if (response.data.code === '0') {
-          // 更新本地教师数据中的推荐数量
-          const teacherIndex = this.teachers.findIndex(t => t.id === this.currentTeacher.id);
-          if (teacherIndex !== -1) {
-            this.teachers[teacherIndex].recommendcount = (this.teachers[teacherIndex].recommendcount || 0) + 1;
-          }
-
-          this.$message.success('评价提交成功！');
-          this.reviewDialogVisible = false;
+        
+        // 详细记录API返回内容
+        console.log('负面内容检查API返回:', checkResponse);
+        console.log('负面内容检查结果:', checkResponse.data);
+        
+        // 关闭加载动画
+        loadingInstance.close();
+        
+        // 检查是否包含负面内容
+        if (checkResponse.data.hasNegativeContent === true) {
+          // 如果包含负面内容，显示错误信息
+          console.log('检测到负面内容，阻止提交');
+          this.$message.error(`内容审核未通过: ${checkResponse.data.message || '包含负面信息'}`);
+          return;
         } else {
-          throw new Error(response.data.msg || '提交失败');
+          console.log('未检测到负面内容，继续提交流程');
+        }
+
+        // 显示提交中的加载动画
+        const submitLoading = this.$loading({
+          lock: true,
+          text: '正在提交评价...',
+          background: 'rgba(0, 0, 0, 0.7)',
+          spinner: 'el-icon-loading',
+          fullscreen: true,
+          customClass: 'custom-loading'
+        });
+
+        try {
+          console.log('准备提交评价数据:', {
+            teacherId: this.currentTeacher.id,
+            teacherName: this.currentTeacher.name,
+            content: this.reviewForm.content,
+            userId: "1" // 注意：现在是字符串类型
+          });
+
+          // 调用后端API保存评价
+          const response = await axios.post('/api/evaluations/insert', {
+            teacherId: this.currentTeacher.id,
+            teacherName: this.currentTeacher.name,
+            content: this.reviewForm.content,
+            userId: "1" // 注意：现在是字符串类型
+          }, {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          // 关闭提交加载动画
+          submitLoading.close();
+
+          console.log('服务器响应:', response);
+
+          if (response.data.code === '0') {
+            // 更新本地教师数据中的推荐数量
+            const teacherIndex = this.teachers.findIndex(t => t.id === this.currentTeacher.id);
+            if (teacherIndex !== -1) {
+              this.teachers[teacherIndex].recommendcount = (this.teachers[teacherIndex].recommendcount || 0) + 1;
+            }
+
+            this.$message.success('评价提交成功！');
+            this.reviewDialogVisible = false;
+          } else {
+            throw new Error(response.data.msg || '提交失败');
+          }
+        } catch (error) {
+          // 关闭提交加载动画
+          submitLoading.close();
+          
+          console.error('提交评价失败:', error);
+          if (error.response) {
+            console.error('错误状态码:', error.response.status);
+            console.error('错误响应数据:', error.response.data);
+            this.$message.error(`提交失败: ${error.response.data.msg || '服务器错误'}`);
+          } else if (error.request) {
+            console.error('没有收到响应:', error.request);
+            this.$message.error('提交失败: 无法连接到服务器');
+          } else {
+            console.error('请求配置错误:', error.message);
+            this.$message.error(`提交失败: ${error.message}`);
+          }
         }
       } catch (error) {
-        console.error('提交评价失败:', error);
-        if (error.response) {
-          console.error('错误状态码:', error.response.status);
-          console.error('错误响应数据:', error.response.data);
-          this.$message.error(`提交失败: ${error.response.data.msg || '服务器错误'}`);
-        } else if (error.request) {
-          console.error('没有收到响应:', error.request);
-          this.$message.error('提交失败: 无法连接到服务器');
-        } else {
-          console.error('请求配置错误:', error.message);
-          this.$message.error(`提交失败: ${error.message}`);
-        }
+        // 关闭加载动画
+        loadingInstance.close();
+        
+        console.error('内容检查失败:', error);
+        this.$message.error('内容检查失败，请稍后重试');
       }
     },
     getProcessedAvatarUrl(url) {
@@ -554,6 +613,45 @@ export default {
   }
 }
 </script>
+
+<style>
+/* 全局样式，不使用scoped */
+.custom-loading .el-loading-spinner .circular {
+  width: 60px !important;
+  height: 60px !important;
+  animation: loading-rotate 2s linear infinite;
+}
+
+.custom-loading .el-loading-spinner .el-loading-text {
+  color: #fff !important;
+  font-size: 18px !important;
+  margin-top: 20px !important;
+  font-weight: 500 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes loading-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+</style>
 
 <style scoped>
 .teachers-container {

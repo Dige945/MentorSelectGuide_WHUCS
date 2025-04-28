@@ -539,6 +539,143 @@ public class OpenAIController {
             }
         }
     }
+
+    /**
+     * 检测推荐理由中是否包含对导师的负面信息
+     * @param request 包含推荐理由的请求对象
+     * @return 检测结果，包含是否包含负面信息及具体内容
+     */
+    @PostMapping("/check-negative-content")
+    public Map<String, Object> checkNegativeContent(@RequestBody Map<String, String> request) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            String recommendationText = request.get("recommendationText");
+            if (recommendationText == null || recommendationText.isEmpty()) {
+                result.put("hasNegativeContent", false);
+                result.put("message", "推荐理由不能为空");
+                return result;
+            }
+            
+            log.info("开始检测推荐理由中的负面内容: {}", recommendationText);
+            
+            // 构建消息
+            List<Map<String, String>> messages = new ArrayList<>();
+            
+            // 添加系统消息
+            Map<String, String> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", 
+                "你是一个内容审核助手，专门检测文本中是否包含对导师的负面信息。\n" +
+                "请分析提供的推荐理由文本，检查是否包含以下类型的负面内容：\n" +
+                "1. 对导师的辱骂、人身攻击或贬低\n" +
+                "2. 对导师学术能力或教学水平的负面评价\n" +
+                "3. 对导师个人品德的质疑或负面描述\n" +
+                "4. 对导师声誉可能造成损害的言论\n" +
+                "5. 其他可能对导师形象产生负面影响的内容\n\n" +
+                "请以JSON格式返回结果，包含以下字段：\n" +
+                "- hasNegativeContent: 布尔值，表示是否包含负面内容\n" +
+                "- message: 字符串，如果包含负面内容，则用一句话总结问题；如果不包含负面内容，则返回空字符串\n" +
+                "- negativeContent: 字符串数组，列出检测到的具体负面内容\n" +
+                "- suggestion: 字符串，提供修改建议\n" +
+                "- confidence: 数字，表示检测的置信度（0-1之间）\n\n" +
+                "注意：请严格判断，任何可能对导师形象产生负面影响的内容都应标记为负面内容。"
+            );
+            messages.add(systemMessage);
+            
+            // 添加用户消息
+            Map<String, String> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", "请检测以下推荐理由中是否包含对导师的负面信息：\n\n" + recommendationText);
+            messages.add(userMessage);
+            
+            // 构建请求体
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", "deepseek-chat");
+            requestBody.put("messages", messages);
+            requestBody.put("stream", false);
+            
+            // 发送请求并处理响应
+            try (CloseableHttpClient client = HttpClients.createDefault()) {
+                HttpPost httpPost = new HttpPost(getApiUrl());
+                httpPost.setHeader("Content-Type", "application/json");
+                httpPost.setHeader("Authorization", "Bearer " + API_KEY);
+                
+                String requestBodyJson = objectMapper.writeValueAsString(requestBody);
+                httpPost.setEntity(new StringEntity(requestBodyJson, StandardCharsets.UTF_8));
+                
+                try (CloseableHttpResponse response = client.execute(httpPost)) {
+                    if (response.getStatusLine().getStatusCode() != 200) {
+                        throw new RuntimeException("API request failed with status: " + 
+                            response.getStatusLine().getStatusCode());
+                    }
+                    
+                    // 读取响应内容
+                    BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8)
+                    );
+                    
+                    StringBuilder responseBuilder = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        responseBuilder.append(line);
+                    }
+                    
+                    // 解析响应
+                    JsonNode responseNode = objectMapper.readTree(responseBuilder.toString());
+                    String content = responseNode.path("choices")
+                                           .path(0)
+                                           .path("message")
+                                           .path("content")
+                                           .asText("");
+                    
+                    log.info("AI返回的原始内容: {}", content);
+                    
+                    // 解析AI返回的JSON结果
+                    JsonNode resultNode;
+                    try {
+                        resultNode = objectMapper.readTree(content);
+                    } catch (Exception e) {
+                        log.error("解析AI返回的JSON失败", e);
+                        // 尝试从文本中提取信息
+                        boolean containsNegative = content.toLowerCase().contains("负面") || 
+                                                 content.toLowerCase().contains("辱骂") ||
+                                                 content.toLowerCase().contains("攻击") ||
+                                                 content.toLowerCase().contains("贬低");
+                        
+                        result.put("hasNegativeContent", containsNegative);
+                        result.put("message", containsNegative ? "检测到负面内容" : "");
+                        result.put("rawResponse", content);
+                        return result;
+                    }
+                    
+                    // 构建返回结果
+                    boolean hasNegativeContent = resultNode.path("hasNegativeContent").asBoolean(false);
+                    result.put("hasNegativeContent", hasNegativeContent);
+                    
+                    if (hasNegativeContent) {
+                        result.put("message", resultNode.path("message").asText("包含负面信息"));
+                        result.put("negativeContent", resultNode.path("negativeContent"));
+                        result.put("suggestion", resultNode.path("suggestion").asText(""));
+                        result.put("confidence", resultNode.path("confidence").asDouble(0.8));
+                    } else {
+                        result.put("message", "");
+                        result.put("negativeContent", new ArrayList<>());
+                        result.put("suggestion", "");
+                        result.put("confidence", resultNode.path("confidence").asDouble(0.8));
+                    }
+                    
+                    log.info("负面内容检测完成，结果: {}", result);
+                }
+            }
+        } catch (Exception e) {
+            log.error("检测负面内容时发生错误", e);
+            result.put("hasNegativeContent", false);
+            result.put("message", "检测负面内容时发生错误: " + e.getMessage());
+        }
+        
+        return result;
+    }
 }
 
 

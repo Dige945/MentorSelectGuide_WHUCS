@@ -472,7 +472,7 @@ export default {
 .direction-en-name {
   font-size: 0.9rem;
   color: #666;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
 
 .direction-buttons {
@@ -481,6 +481,7 @@ export default {
   opacity: 0;
   transform: translateY(10px);
   transition: all 0.3s ease;
+  margin-top: -5px;
 }
 
 .direction-card:hover .direction-buttons {
