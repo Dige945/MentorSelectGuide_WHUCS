@@ -294,14 +294,22 @@ export default {
           if (done) break;
           
           const text = decoder.decode(value);
-          // Clean up the text and handle line breaks
-          const cleanText = text
-            .replace(/data:/g, '')
-            .replace(/\n\s*\n/g, '\n\n')
-            .trim();
-          
+          // 先去掉data:前缀和多余空白
+          let cleanText = text.replace(/data:/g, '').trim();
+          // 累加
           this.aiDescription += cleanText;
         }
+        // --- markdown结构优化 ---
+        let formatted = this.aiDescription;
+        // 标题前后加空行
+        formatted = formatted.replace(/###\s*(.+)/g, '\n\n### $1\n');
+        // 二级标题前后加空行
+        formatted = formatted.replace(/##\s*(.+)/g, '\n\n## $1\n');
+        // 加粗关键词
+        formatted = formatted.replace(/(基本概念|主要研究内容|应用场景|最新研究热点|未来趋势)/g, '**$1**');
+        // 合并多余空行
+        formatted = formatted.replace(/\n{3,}/g, '\n\n');
+        this.aiDescription = formatted;
       } catch (error) {
         console.error('Error:', error);
         this.$message.error('获取研究方向介绍失败');

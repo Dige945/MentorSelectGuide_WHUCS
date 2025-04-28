@@ -186,40 +186,43 @@ export default {
 
             for (const line of lines) {
               if (line.startsWith('data:')) {
-                // 移除'data:'前缀并添加到结果中
                 const content = line.substring(5).trim();
                 if (content) {
-                  result += content;
+                  result += content; // 只做累加，不做任何格式化
                 }
               }
             }
-
-            // 预处理文本，修复常见格式问题
-            let formattedText = result;
-            // 修复标题格式
-            formattedText = formattedText.replace(/•\s*title">(.*?)(?=•|$)/g, '### $1\n');
-            
-            // 修复常见的空格问题
-            formattedText = formattedText.replace(/(\w)\s(\w)/g, '$1$2'); // 移除英文字符之间的空格
-            formattedText = formattedText.replace(/(\d)\s(\d)/g, '$1$2'); // 移除数字之间的空格
-            formattedText = formattedText.replace(/\s+([，。！？、：；])/g, '$1'); // 移除中文标点前的空格
-            formattedText = formattedText.replace(/([，。！？、：；])\s+/g, '$1'); // 移除中文标点后的空格
-            formattedText = formattedText.replace(/\s{2,}/g, ' '); // 将多个空格替换为一个
-            
-            // 修复Markdown格式
-            formattedText = formattedText.replace(/\#\#\#\s*(\d+)\s*\.\s*/g, '### $1. '); // 修复标题数字格式
-            formattedText = formattedText.replace(/\-\s+/g, '- '); // 修复列表项格式
-            formattedText = formattedText.replace(/\*\*\s+/g, '**'); // 修复加粗开始格式
-            formattedText = formattedText.replace(/\s+\*\*/g, '**'); // 修复加粗结束格式
-            
-            // 确保段落之间有适当的换行
-            formattedText = formattedText.replace(/\n\s*\n/g, '\n\n');
-
-            // 将格式化后的文本设置为推荐结果
-            this.recommendation = formattedText;
           }
 
-          console.log('DeepSeek API响应完成:', result);
+          // 只在最后做一次格式化
+          let formattedText = result;
+
+          // 推荐导师列表加粗
+          formattedText = formattedText.replace(/推荐导师列表/g, '\n\n**推荐导师列表**\n\n');
+
+          // 标题格式
+          formattedText = formattedText.replace(/###\s*(\d+)\s*\.\s*/g, '\n\n### $1. ');
+
+          // 列表项格式
+          formattedText = formattedText.replace(/-\s+/g, '- ');
+
+          // 确保每个标题、列表项前后有换行
+          formattedText = formattedText.replace(/(### .*)/g, '\n$1\n');
+          formattedText = formattedText.replace(/(- .*)/g, '$1\n');
+
+          // 让每个导师之间有空行
+          formattedText = formattedText.replace(/(\\d+\\. .+?)(?=\\d+\\. )/gs, '$1\n\n');
+
+          // 推荐理由、研究方向、职称、所属院系后加换行
+          formattedText = formattedText.replace(/推荐理由：/g, '推荐理由：\n');
+          formattedText = formattedText.replace(/研究方向：/g, '研究方向：\n');
+          formattedText = formattedText.replace(/职称：/g, '职称：\n');
+          formattedText = formattedText.replace(/所属院系：/g, '所属院系：\n');
+
+          // 合并多余的空行
+          formattedText = formattedText.replace(/\n{3,}/g, '\n\n');
+
+          this.recommendation = formattedText;
         }).catch(error => {
           console.error('DeepSeek API请求失败:', error);
           this.$message.error('AI推荐服务暂时不可用，将使用本地推荐');

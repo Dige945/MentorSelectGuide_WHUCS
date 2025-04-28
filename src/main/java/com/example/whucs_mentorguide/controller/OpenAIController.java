@@ -37,15 +37,23 @@ public class OpenAIController {
 
     // DeepSeek API 密钥（从配置文件中注入）
     @Value("${ai.config.deepseek.apiKey}")
-    private String API_KEY;
+    private String DEEPSEEK_API_KEY;
 
     // DeepSeek API 基础地址（从配置文件中注入）
     @Value("${ai.config.deepseek.baseUrl}")
-    private String API_BASE_URL;
+    private String DEEPSEEK_API_BASE_URL;
+    
+    // Kimi API 密钥（从配置文件中注入）
+    @Value("${ai.config.kimi.apiKey}")
+    private String KIMI_API_KEY;
+
+    // Kimi API 基础地址（从配置文件中注入）
+    @Value("${ai.config.kimi.baseUrl}")
+    private String KIMI_API_BASE_URL;
 
     // 完整的API URL
     private String getApiUrl() {
-        return API_BASE_URL + "/chat/completions";
+        return KIMI_API_BASE_URL + "/chat/completions";
     }
 
     // 系统提示词（从配置文件中注入）
@@ -112,7 +120,7 @@ public class OpenAIController {
                 
                 // 构建请求体
                 Map<String, Object> requestBody = new HashMap<>();
-                requestBody.put("model", "deepseek-chat");
+                requestBody.put("model", "moonshot-v1-8k");
                 requestBody.put("messages", messages);
                 requestBody.put("stream", true);
                 
@@ -120,7 +128,7 @@ public class OpenAIController {
                 try (CloseableHttpClient client = HttpClients.createDefault()) {
                     HttpPost request = new HttpPost(getApiUrl());
                     request.setHeader("Content-Type", "application/json");
-                    request.setHeader("Authorization", "Bearer " + API_KEY);
+                    request.setHeader("Authorization", "Bearer " + KIMI_API_KEY);
                     
                     String jsonBody = objectMapper.writeValueAsString(requestBody);
                     request.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
@@ -181,7 +189,7 @@ public class OpenAIController {
 
         log.info("接收到推荐请求，请求内容: {}", request);
         log.info("API URL: {}", getApiUrl());
-        log.info("API Key: {}", API_KEY.substring(0, 5) + "...");
+        log.info("API Key: {}", KIMI_API_KEY.substring(0, 5) + "...");
 
         executorService.execute(() -> {
             try {
@@ -205,26 +213,26 @@ public class OpenAIController {
                 try (CloseableHttpClient client = HttpClients.createDefault()) {
                     HttpPost httpPost = new HttpPost(getApiUrl());
                     httpPost.setHeader("Content-Type", "application/json");
-                    httpPost.setHeader("Authorization", "Bearer " + API_KEY);
+                    httpPost.setHeader("Authorization", "Bearer " + KIMI_API_KEY);
 
                     Map<String, Object> requestMap = new HashMap<>();
-                    requestMap.put("model", "deepseek-chat");
+                    requestMap.put("model", "moonshot-v1-32k");
                     requestMap.put("messages", messages);
                     requestMap.put("stream", true);
 
                     String requestBody = objectMapper.writeValueAsString(requestMap);
                     httpPost.setEntity(new StringEntity(requestBody, StandardCharsets.UTF_8));
 
-                    log.info("发送到DeepSeek API的请求URL: {}", getApiUrl());
-                    log.info("发送到DeepSeek API的请求头: {}", Arrays.toString(httpPost.getAllHeaders()));
-                    log.info("发送到DeepSeek API的请求体: {}", requestBody);
+                    log.info("发送到Kimi API的请求URL: {}", getApiUrl());
+                    log.info("发送到Kimi API的请求头: {}", Arrays.toString(httpPost.getAllHeaders()));
+                    log.info("发送到Kimi API的请求体: {}", requestBody);
 
                     try (CloseableHttpResponse response = client.execute(httpPost)) {
                         int statusCode = response.getStatusLine().getStatusCode();
-                        log.info("DeepSeek API响应状态码: {}", statusCode);
+                        log.info("Kimi API响应状态码: {}", statusCode);
 
                         if (statusCode != 200) {
-                            String errorMessage = "DeepSeek API返回错误状态码: " + statusCode;
+                            String errorMessage = "Kimi API返回错误状态码: " + statusCode;
                             log.error(errorMessage);
                             emitter.send(errorMessage);
                             emitter.complete();
@@ -271,7 +279,7 @@ public class OpenAIController {
                             emitter.complete();
                         }
                     } catch (Exception e) {
-                        log.error("DeepSeek API请求处理异常", e);
+                        log.error("Kimi API请求处理异常", e);
                         try {
                             // 发送错误消息到前端
                             emitter.send("AI推荐服务暂时不可用，请稍后再试。错误信息: " + e.getMessage());
@@ -294,22 +302,15 @@ public class OpenAIController {
     }
 
     private String buildSystemPrompt(Map<String, Object> request) {
-        return "你是一个专业的导师推荐系统。请根据用户的选择和偏好，推荐最适合的导师。\n" +
+        return "你是一个专业的导师推荐系统。请根据用户的选择和偏好，推荐最适合的导师。\n\n" +
                "请按照以下格式返回推荐结果：\n\n" +
                "## 推荐导师列表\n\n" +
-               "### 1. [导师姓名]\n" +
-               "- 职称：[职称]\n" +
-               "- 所属院系：[院系]\n" +
-               "- 研究方向：[研究方向]\n" +
-               "- 个人主页：[个人主页链接]\n" +
+               "### 1. [导师姓名]\n\n" +
+               "- 职称：[职称]\n\n" +
+               "- 所属院系：[院系]\n\n" +
+               "- 研究方向：[研究方向]\n\n" +
                "- 推荐理由：[详细推荐理由]\n\n" +
-               "### 2. [导师姓名]\n" +
-               "...\n\n" +
-               "请确保：\n" +
-               "1. 每个导师的信息用markdown格式清晰展示\n" +
-               "2. 推荐理由要具体，说明与用户需求的匹配点\n" +
-               "3. 个人主页链接要完整\n" +
-               "4. 不要有多余的空格和换行";
+               "请确保推荐理由具体说明与用户需求的匹配点。每个导师的信息之间请用两个换行符分隔。";
     }
 
     private String buildUserPrompt(Map<String, Object> request) {
@@ -320,7 +321,7 @@ public class OpenAIController {
         if (request.containsKey("tags") && request.get("tags") instanceof List) {
             List<String> tags = (List<String>) request.get("tags");
             if (!tags.isEmpty()) {
-                prompt.append("研究方向：").append(String.join("、", tags)).append("\n");
+                prompt.append("研究方向：").append(String.join("、", tags)).append("\n\n");
             }
         }
 
@@ -328,24 +329,23 @@ public class OpenAIController {
         if (request.containsKey("preferences") && request.get("preferences") instanceof String) {
             String preferences = (String) request.get("preferences");
             if (!preferences.isEmpty()) {
-                prompt.append("用户偏好：").append(preferences).append("\n");
+                prompt.append("用户偏好：").append(preferences).append("\n\n");
             }
         }
 
         // 添加教师信息
         if (request.containsKey("teachers") && request.get("teachers") instanceof List) {
             List<Map<String, Object>> teachers = (List<Map<String, Object>>) request.get("teachers");
-            prompt.append("\n可选的教师列表：\n");
+            prompt.append("可选的教师列表：\n\n");
             for (Map<String, Object> teacher : teachers) {
                 prompt.append("- ").append(teacher.get("name")).append("（")
                         .append(teacher.get("title")).append("，")
                         .append(teacher.get("department")).append("，")
-                        .append("研究方向：").append(teacher.get("research_area")).append("，")
-                        .append("个人主页：").append(teacher.get("profile_url")).append("）\n");
+                        .append(teacher.get("research_area")).append("）\n\n");
             }
         }
 
-        prompt.append("\n请根据以上信息，推荐最适合的导师，并说明推荐理由。");
+        prompt.append("请根据以上信息，推荐最适合的导师，并说明推荐理由。");
         return prompt.toString();
     }
 
@@ -387,21 +387,21 @@ public class OpenAIController {
                 
                 // 构建请求体
                 Map<String, Object> requestBody = new HashMap<>();
-                requestBody.put("model", "deepseek-chat");
+                requestBody.put("model", "moonshot-v1-8k");
                 requestBody.put("messages", messages);
                 requestBody.put("stream", true);
                 
                 try (CloseableHttpClient client = HttpClients.createDefault()) {
                     HttpPost httpPost = new HttpPost(getApiUrl());
                     httpPost.setHeader("Content-Type", "application/json");
-                    httpPost.setHeader("Authorization", "Bearer " + API_KEY);
+                    httpPost.setHeader("Authorization", "Bearer " + KIMI_API_KEY);
                     
                     String requestBodyJson = objectMapper.writeValueAsString(requestBody);
                     httpPost.setEntity(new StringEntity(requestBodyJson, StandardCharsets.UTF_8));
                     
                     try (CloseableHttpResponse response = client.execute(httpPost)) {
                         if (response.getStatusLine().getStatusCode() != 200) {
-                            throw new RuntimeException("API request failed with status: " + 
+                            throw new RuntimeException("Kimi API request failed with status: " + 
                                 response.getStatusLine().getStatusCode());
                         }
                         
@@ -473,7 +473,7 @@ public class OpenAIController {
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpPost httpPost = new HttpPost(getApiUrl());
             httpPost.setHeader("Content-Type", "application/json");
-            httpPost.setHeader("Authorization", "Bearer " + API_KEY);
+            httpPost.setHeader("Authorization", "Bearer " + KIMI_API_KEY);
 
             String requestBodyJson = objectMapper.writeValueAsString(requestBody);
             httpPost.setEntity(new StringEntity(requestBodyJson, StandardCharsets.UTF_8));
@@ -481,7 +481,7 @@ public class OpenAIController {
             try (CloseableHttpResponse response = client.execute(httpPost)) {
                 int statusCode = response.getStatusLine().getStatusCode();
                 if (statusCode != 200) {
-                    String errorMessage = "DeepSeek API返回错误状态码: " + statusCode;
+                    String errorMessage = "Kimi API返回错误状态码: " + statusCode;
                     log.error(errorMessage);
                     emitter.send(errorMessage);
                     emitter.complete();
@@ -591,7 +591,7 @@ public class OpenAIController {
             
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "deepseek-chat");
+            requestBody.put("model", "moonshot-v1-8k");
             requestBody.put("messages", messages);
             requestBody.put("stream", false);
             
@@ -599,14 +599,14 @@ public class OpenAIController {
             try (CloseableHttpClient client = HttpClients.createDefault()) {
                 HttpPost httpPost = new HttpPost(getApiUrl());
                 httpPost.setHeader("Content-Type", "application/json");
-                httpPost.setHeader("Authorization", "Bearer " + API_KEY);
+                httpPost.setHeader("Authorization", "Bearer " + KIMI_API_KEY);
                 
                 String requestBodyJson = objectMapper.writeValueAsString(requestBody);
                 httpPost.setEntity(new StringEntity(requestBodyJson, StandardCharsets.UTF_8));
                 
                 try (CloseableHttpResponse response = client.execute(httpPost)) {
                     if (response.getStatusLine().getStatusCode() != 200) {
-                        throw new RuntimeException("API request failed with status: " + 
+                        throw new RuntimeException("Kimi API request failed with status: " + 
                             response.getStatusLine().getStatusCode());
                     }
                     
