@@ -1,7 +1,6 @@
 # MentorSelectGuide_WHUCS
 
-这是一个基于 Vue 3 和 Spring Boot 开发的武汉大学计算机学院导师指南系统，旨在为学生科研之路提供智能化指南。
-
+这是一个基于 Vue 3 和 Spring Boot 开发的基于大模型AI Agent的导师智能推荐系统，旨在为学生科研之路提供智能化指南。
 
 ## 项目特点
 
