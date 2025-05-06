@@ -1,0 +1,31 @@
+@startuml 用户登录流程
+actor 用户
+participant "前端(Login.vue)" as Frontend
+participant "UserController" as UserController
+participant "UserMapper" as UserMapper
+database "数据库" as DB
+
+用户 -> Frontend: 输入用户名密码
+activate Frontend
+Frontend -> UserController: POST /user/login
+activate UserController
+UserController -> UserMapper: selectOne(username, password)
+activate UserMapper
+UserMapper -> DB: SQL查询
+activate DB
+DB --> UserMapper: 返回用户信息
+deactivate DB
+UserMapper --> UserController: 返回用户对象
+deactivate UserMapper
+
+alt 用户存在
+    UserController --> Frontend: 返回成功结果(code=0)
+    Frontend -> Frontend: 保存token和用户信息
+    Frontend -> Frontend: 跳转到首页或重定向页面
+else 用户不存在
+    UserController --> Frontend: 返回错误结果(code=-1)
+    Frontend -> 用户: 显示错误信息
+end
+deactivate UserController
+deactivate Frontend
+@enduml

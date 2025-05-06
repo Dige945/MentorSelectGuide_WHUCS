@@ -1,0 +1,48 @@
+@startuml 评价教师流程
+actor 用户
+participant "前端(Teachers.vue)" as Frontend
+participant "EvaluationController" as EvaluationController
+participant "EvaluationMapper" as EvaluationMapper
+participant "TeacherMapper" as TeacherMapper
+database "数据库" as DB
+
+用户 -> Frontend: 点击"写推荐"按钮
+activate Frontend
+Frontend -> Frontend: 显示评价对话框
+用户 -> Frontend: 输入评价内容并提交
+Frontend -> EvaluationController: POST /evaluations/insert
+activate EvaluationController
+
+EvaluationController -> EvaluationController: 验证评价数据
+alt 数据有效
+    EvaluationController -> EvaluationMapper: insert(evaluation)
+    activate EvaluationMapper
+    EvaluationMapper -> DB: 插入评价数据
+    DB --> EvaluationMapper: 返回结果
+    EvaluationMapper --> EvaluationController: 返回结果
+    deactivate EvaluationMapper
+
+    EvaluationController -> TeacherMapper: selectById(teacherId)
+    activate TeacherMapper
+    TeacherMapper -> DB: 查询教师
+    DB --> TeacherMapper: 返回教师数据
+    TeacherMapper --> EvaluationController: 返回教师对象
+    deactivate TeacherMapper
+
+    EvaluationController -> TeacherMapper: updateById(teacher) 更新推荐数
+    activate TeacherMapper
+    TeacherMapper -> DB: 更新教师推荐数
+    DB --> TeacherMapper: 返回结果
+    TeacherMapper --> EvaluationController: 返回更新结果
+    deactivate TeacherMapper
+
+    EvaluationController --> Frontend: 返回成功结果
+    Frontend -> 用户: 显示提交成功消息
+    Frontend -> Frontend: 更新教师推荐数显示
+else 数据无效
+    EvaluationController --> Frontend: 返回错误结果
+    Frontend -> 用户: 显示错误信息
+end
+deactivate EvaluationController
+deactivate Frontend
+@enduml
