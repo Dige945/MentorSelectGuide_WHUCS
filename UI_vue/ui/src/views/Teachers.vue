@@ -365,8 +365,32 @@ export default {
         content: '',
         tags: []
       };
-      this.reviewDialogVisible = true;
+      
+      // 先检查是否可以评价
+      this.checkCanEvaluate(teacher.id);
     },
+    
+    async checkCanEvaluate(teacherId) {
+      try {
+        const response = await axios.get(`/api/evaluations/can-evaluate/${teacherId}`);
+        if (response.data.code === '0') {
+          const canEvaluate = response.data.data;
+          if (canEvaluate) {
+            this.reviewDialogVisible = true;
+          } else {
+            this.$message.warning('您今天已经评价过该教师，请明天再试');
+          }
+        } else {
+          this.$message.error('检查评价权限失败');
+          this.reviewDialogVisible = true; // 失败时也允许显示，后端会再次验证
+        }
+      } catch (error) {
+        console.error('检查评价权限失败:', error);
+        this.$message.error('检查评价权限失败，请稍后重试');
+        this.reviewDialogVisible = true; // 失败时也允许显示，后端会再次验证
+      }
+    },
+    
     async submitReview() {
       if (!this.reviewForm.content.trim()) {
         this.$message.warning('请输入评价内容');

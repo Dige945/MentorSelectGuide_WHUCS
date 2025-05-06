@@ -8,9 +8,15 @@ import com.example.whucs_mentorguide.entity.Teacher;
 import com.example.whucs_mentorguide.mapper.EvaluationMapper;
 import com.example.whucs_mentorguide.mapper.TeacherMapper;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/evaluations")
@@ -20,9 +26,45 @@ public class EvaluationController {
     
     @Resource
     TeacherMapper teacherMapper;
+    
+    // 内存缓存，记录 "IP-teacherId-日期" -> 次数
+    // 实际生产环境建议使用Redis更合适，支持过期和分布式
+    private static final Map<String, Integer> evaluationLimitCache = new ConcurrentHashMap<>();
+    
+    // 每天清理一次缓存的过期日期记录（简单实现，生产环境建议用定时任务）
+    private static LocalDate lastCleanupDate = LocalDate.now();
+    
+    // 获取客户端IP
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // 多个代理的情况，第一个IP为真实IP
+        if (ip != null && ip.indexOf(",") > 0) {
+            ip = ip.substring(0, ip.indexOf(","));
+        }
+        return ip;
+    }
+    
+    // 清理过期缓存记录（不同日期的）
+    private void cleanupExpiredRecords() {
+        LocalDate today = LocalDate.now();
+        if (!today.equals(lastCleanupDate)) {
+            evaluationLimitCache.clear();
+            lastCleanupDate = today;
+            System.out.println("已清理过期评价限制记录");
+        }
+    }
 
     @PostMapping("/insert")  //插入评价
-    public Result<?> insert(@RequestBody Evaluation evaluation) {
+    public Result<?> insert(@RequestBody Evaluation evaluation, HttpServletRequest request) {
         if (evaluation.getTeacherId() == null) {
             return Result.error("-1", "教师ID不能为空");
         }
@@ -34,6 +76,23 @@ public class EvaluationController {
         }
         
         try {
+            // 清理过期缓存
+            cleanupExpiredRecords();
+            
+            // 获取客户端IP
+            String clientIp = getClientIp(request);
+            System.out.println("客户端IP: " + clientIp);
+            
+            // 生成限制键: IP-teacherId-日期
+            String today = LocalDate.now().toString();
+            String limitKey = clientIp + "-" + evaluation.getTeacherId() + "-" + today;
+            
+            // 检查是否已经评价过
+            Integer count = evaluationLimitCache.getOrDefault(limitKey, 0);
+            if (count >= 1) {
+                return Result.error("-1", "您今天已经评价过该教师，请明天再试");
+            }
+            
             // 设置创建时间为当前时间
             evaluation.setCreatedAt(new java.sql.Timestamp(System.currentTimeMillis()));
             System.out.println("准备保存评价数据：" + evaluation);
@@ -50,6 +109,10 @@ public class EvaluationController {
             } else {
                 System.out.println("未找到教师：" + evaluation.getTeacherId());
             }
+            
+            // 更新评价限制缓存
+            evaluationLimitCache.put(limitKey, count + 1);
+            System.out.println("已更新评价限制: " + limitKey + " -> " + (count + 1));
             
             return Result.success();
         } catch (Exception e) {
@@ -96,5 +159,21 @@ public class EvaluationController {
         wrapper.eq(Evaluation::getId, id).eq(Evaluation::getUserId, userId);
         evaluationMapper.delete(wrapper);
         return Result.success();
+    }
+    
+    // 检查用户今天是否可以评价特定老师（给前端调用的接口）
+    @GetMapping("/can-evaluate/{teacherId}")
+    public Result<?> canEvaluate(@PathVariable Integer teacherId, HttpServletRequest request) {
+        // 清理过期缓存
+        cleanupExpiredRecords();
+        
+        String clientIp = getClientIp(request);
+        String today = LocalDate.now().toString();
+        String limitKey = clientIp + "-" + teacherId + "-" + today;
+        
+        Integer count = evaluationLimitCache.getOrDefault(limitKey, 0);
+        boolean canEvaluate = count < 1;
+        
+        return Result.success(canEvaluate);
     }
 }
