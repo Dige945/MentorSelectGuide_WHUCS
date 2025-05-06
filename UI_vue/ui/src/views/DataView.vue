@@ -211,29 +211,187 @@ export default {
         tier: 'A',
         track: 'AI'
       },
-      { 
-        name: 'ICML 2026(未定期)',
-        date: '2026-07-01',
-        tier: 'A+',
-        track: 'ML'
-      },
-      { 
+      {
         name: 'CVPR 2026',
         date: '2026-06-06',
         tier: 'A+',
         track: 'CV'
       },
-      { 
+      {
         name: 'NeurIPS 2024',
         date: '2025-05-11',
         tier: 'A+',
         track: 'ML'
       },
-      { 
-        name: 'ICLR 2026(未定期)',
-        date: '2026-02-08',
-        tier: 'A+',
-        track: 'ML'
+      {
+        name: 'VLDB 2026', // Very Large Data Bases
+        date: '2025-06-01', // Estimated June cycle deadline based on monthly pattern
+        tier: 'A+', //
+        track: 'Databases' //
+      },
+      {
+        name: 'S&P 2026', // IEEE Symposium on Security and Privacy
+        date: '2025-06-05', // First Deadline
+        tier: 'A++', //
+        track: 'Security' //
+      },
+      // --- Deadlines in July 2025 ---
+      {
+        name: 'AAAI 2026',
+        date: '2025-07-07', //
+        tier: 'A', //
+        track: 'AI' //
+      },
+      {
+        name: 'POPL 2026', // Principles of Programming Languages
+        date: '2025-07-11', // Tentative, based on deadline list
+        tier: 'A++', //
+        track: 'SE/PL' //
+      },
+      {
+        name: 'ICSE 2026', // International Conference on Software Engineering
+        date: '2025-07-18', // Second Cycle
+        tier: 'A++', //
+        track: 'SE' //
+      },
+      {
+        name: 'INFOCOM 2026', // IEEE International Conference on Computer Communications
+        date: '2025-07-25', // Estimated based on past cycle
+        tier: 'A', //
+        track: 'Networks' //
+      },
+      {
+        name: 'SIGKDD 2025', // Knowledge Discovery and Data Mining
+        date: '2025-07-31', // July Cycle
+        tier: 'A++', //
+        track: 'Databases/DM' //
+      },
+      {
+        name: 'NDSS 2026', // Network and Distributed System Security Symposium
+        date: '2025-07-31', // Tentative, based on deadline list (Date from sslab list)
+        tier: 'A', //
+        track: 'Security' //
+      },
+      // --- Deadlines in August 2025 ---
+      {
+        name: 'ASPLOS 2026', // Architectural Support for PLs and OSs
+        date: '2025-08-20', // Summer Cycle
+        tier: 'A++', //
+        track: 'Systems' //
+      },
+      // --- Deadlines in September 2025 ---
+      {
+        name: 'USENIX Security 2026',
+        date: '2025-09-05', // Cycle 1 for 2026
+        tier: 'A++', //
+        track: 'Security' //
+      },
+      {
+        name: 'FSE 2026', // Foundations of Software Engineering
+        date: '2025-09-11', //
+        tier: 'A++', //
+        track: 'SE' //
+      },
+      {
+        name: 'CHI 2026', // Human Factors in Computing Systems
+        date: '2025-09-13', // Estimated based on past cycle
+        tier: 'A+', //
+        track: 'HCI' //
+      },
+      {
+        name: 'IEEE VR 2026', // IEEE Virtual Reality
+        date: '2025-09-15', // Estimated deadline
+        tier: 'A', //
+        track: 'Graphics/VR' //
+      },
+      {
+        name: 'FAST 2026', // File and Storage Technologies
+        date: '2025-09-16', // Fall deadline
+        tier: 'A', //
+        track: 'Systems' //
+      },
+      {
+        name: 'NSDI 2026', // Network System Design and Implementation
+        date: '2025-09-18', // Fall Cycle
+        tier: 'A++', //
+        track: 'Networks' //
+      },
+      {
+        name: 'EuroSys 2026', // European Conference on Computer Systems
+        date: '2025-09-26', // Tentative Cycle 2 based on deadline list
+        tier: 'A', //
+        track: 'Systems' //
+      },
+      // --- Deadlines in October 2025 ---
+      {
+        name: 'SIGMOD 2026', // Management of Data
+        date: '2025-10-17', // October Cycle
+        tier: 'A++', //
+        track: 'Databases' //
+      },
+      // --- Deadlines in November 2025 ---
+      {
+        name: 'ISSTA 2026', // International Symposium on Software Testing and Analysis
+        date: '2025-11-01', // Tentative, based on deadline list (Date from sslab list)
+        tier: 'A', //
+        track: 'SE' //
+      },
+      {
+        name: 'CVPR 2026', // Computer Vision and Pattern Recognition
+        date: '2025-11-14', // Estimated based on past cycle
+        tier: 'A++', //
+        track: 'AI/CV' //
+      },
+      {
+        name: 'PLDI 2026', // Programming Language Design and Implementation
+        date: '2025-11-17', // (Date from sslab list)
+        tier: 'A++', //
+        track: 'SE/PL' //
+      },
+      {
+        name: 'ISCA 2026', // International Symposium on Computer Architecture
+        date: '2025-11-23', //
+        tier: 'A++', //
+        track: 'Systems' //
+      },
+      // --- Deadlines in December 2025 ---
+      {
+        name: 'FM 2026', // International Symposium on Formal Methods
+        date: '2025-12-02', //
+        tier: 'A', //
+        track: 'SE/FM' //
+      },
+      {
+        name: 'OSDI 2026', // Operating Systems Design and Implementation
+        date: '2025-12-07', // Tentative, based on deadline list (Date from sslab list)
+        tier: 'A++', //
+        track: 'SE/OS' //
+      },
+      // --- Deadlines in January 2026 ---
+      {
+        name: 'CCS 2026', // Computer and Communications Security
+        date: '2026-01-10', // Cycle 1 (Date from sslab list)
+        tier: 'A++', //
+        track: 'Security' //
+      },
+      {
+        name: 'SIGGRAPH 2026', // Computer Graphics
+        date: '2026-01-23', // Estimated based on past cycle
+        tier: 'A++', //
+        track: 'Graphics' //
+      },
+      {
+        name: 'ICML 2026', // International Conference on Machine Learning
+        date: '2026-01-30', //
+        tier: 'A+', //
+        track: 'AI/ML' //
+      },
+      // --- Deadlines in February 2026 ---
+      {
+        name: 'ACL 2026', // Association for Computational Linguistics
+        date: '2026-02-15', //
+        tier: 'A+', //
+        track: 'AI/NLP' //
       }
     ])
 

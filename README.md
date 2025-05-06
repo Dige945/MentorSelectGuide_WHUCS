@@ -12,6 +12,9 @@
 - 智能化导师匹配算法
 - 响应式设计和现代化UI
 - 数据可视化展示
+- 完整的用户认证系统
+- 论坛交流功能
+- 新闻管理系统
 
 ## 技术栈
 
@@ -32,13 +35,23 @@
 - **开发工具**: Vue CLI
 
 ### 后端
-- **核心框架**: Spring Boot
+- **核心框架**: Spring Boot 3.4.4
 - **AI集成**: DeepSeek Chat API
-- **数据库**: MySQL
-- **HTTP客户端**: Apache HttpClient
+- **数据库**: MySQL 8.0
+- **ORM框架**: MyBatis-Plus 3.5.9
+- **HTTP客户端**: 
+  - Apache HttpClient
+  - OkHttp
+  - Unirest
 - **JSON处理**: Jackson
 - **构建工具**: Maven
 - **服务器推送**: SSE (Server-Sent Events)
+- **API文档**: SpringDoc OpenAPI 2.2.0
+- **工具库**:
+  - Lombok
+  - Hutool
+  - Guava
+  - EasyExcel
 
 ## 系统功能
 
@@ -57,11 +70,14 @@
 - 科研方向查询
 - 用户认证系统
 - 个人中心
+- Excel数据导出功能
 
 ### 待实现功能
 - 教师评价系统
 - 高级数据分析功能
 - 智能匹配算法优化
+- 移动端应用开发
+- 管理员后台系统
 
 ## 项目结构
 
@@ -104,9 +120,13 @@ MentorSelectGuide_WHUCS/
 │       │   │       ├── controller/    # 控制器
 │       │   │       ├── service/       # 服务层
 │       │   │       ├── model/         # 数据模型
-│       │   │       └── config/        # 配置类
+│       │   │       ├── repository/    # 数据访问层
+│       │   │       ├── config/        # 配置类
+│       │   │       ├── util/          # 工具类
+│       │   │       └── exception/     # 异常处理
 │       │   └── resources/
-│       │       └── application.properties
+│       │       ├── application.properties
+│       │       └── mapper/            # MyBatis映射文件
 │       └── test/                # 测试目录
 │
 └── 数据库数据/               # 数据库相关文件
@@ -116,7 +136,7 @@ MentorSelectGuide_WHUCS/
 
 ### 环境要求
 - Node.js >= 14.0.0
-- Java >= 17
+- Java >= 21
 - Maven >= 3.6
 - MySQL >= 8.0
 - npm >= 6.0.0
@@ -148,6 +168,15 @@ ai.config.deepseek.baseUrl=https://api.deepseek.com/v1
 spring.datasource.url=jdbc:mysql://localhost:3306/mentor_guide
 spring.datasource.username=<username>
 spring.datasource.password=<password>
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+```
+
+### MyBatis-Plus配置
+```properties
+mybatis-plus.mapper-locations=classpath:mapper/*.xml
+mybatis-plus.type-aliases-package=com.example.whucs_mentorguide.model
+mybatis-plus.configuration.map-underscore-to-camel-case=true
 ```
 
 ## 开发指南
@@ -157,12 +186,15 @@ spring.datasource.password=<password>
 2. 使用 Element Plus 组件库
 3. 使用 ESLint 进行代码规范检查
 4. 实现响应式设计
+5. 遵循组件化开发原则
 
 ### 后端开发
 1. 遵循 RESTful API 设计规范
 2. 使用统一的响应格式
 3. 实现完整的错误处理
 4. 添加详细的日志记录
+5. 使用 MyBatis-Plus 进行数据库操作
+6. 遵循分层架构设计
 
 ## 部署说明
 
