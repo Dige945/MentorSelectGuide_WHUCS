@@ -1,0 +1,31 @@
+@startuml AI推荐流程
+actor 用户
+participant "前端(AIRecommend.vue)" as Frontend
+participant "OpenAIController" as AIController
+participant "异步任务线程" as AsyncTask
+participant "DeepSeek API" as API
+
+用户 -> Frontend: 提交推荐请求
+activate Frontend
+Frontend -> AIController: POST /deepSeek/recommend
+activate AIController
+AIController -> AIController: 构建系统和用户提示词
+AIController -> AsyncTask: 异步处理请求
+activate AsyncTask
+AIController --> Frontend: 返回SSE流式响应连接
+deactivate AIController
+
+AsyncTask -> API: 请求AI模型生成
+activate API
+API --> AsyncTask: 流式返回AI响应
+deactivate API
+
+loop 对每个AI响应块
+    AsyncTask -> Frontend: 通过SSE发送流式响应块
+    Frontend -> 用户: 实时展示AI建议
+end
+
+AsyncTask -> AsyncTask: 保存会话历史
+deactivate AsyncTask
+deactivate Frontend
+@enduml

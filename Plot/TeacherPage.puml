@@ -1,0 +1,50 @@
+@startuml 查看教师详情流程
+actor 用户
+participant "前端(TeacherDetail.vue)" as Frontend
+participant "TeacherController" as TeacherController
+participant "PaperController" as PaperController
+participant "EvaluationController" as EvaluationController
+participant "TeacherMapper" as TeacherMapper
+participant "PaperMapper" as PaperMapper
+participant "EvaluationMapper" as EvaluationMapper
+database "数据库" as DB
+
+用户 -> Frontend: 点击查看教师详情
+activate Frontend
+
+Frontend -> TeacherController: GET /teachers/{id}
+activate TeacherController
+TeacherController -> TeacherMapper: selectById(id)
+activate TeacherMapper
+TeacherMapper -> DB: 查询教师信息
+DB --> TeacherMapper: 返回教师数据
+TeacherMapper --> TeacherController: 返回教师对象
+deactivate TeacherMapper
+TeacherController --> Frontend: 返回教师信息
+deactivate TeacherController
+
+Frontend -> PaperController: GET /paper/teacher/{teacherName}
+activate PaperController
+PaperController -> PaperMapper: 查询教师论文
+activate PaperMapper
+PaperMapper -> DB: 查询论文数据
+DB --> PaperMapper: 返回论文列表
+PaperMapper --> PaperController: 返回论文对象
+deactivate PaperMapper
+PaperController --> Frontend: 返回论文列表
+deactivate PaperController
+
+Frontend -> EvaluationController: GET /evaluations/teacher/{teacherId}
+activate EvaluationController
+EvaluationController -> EvaluationMapper: 查询教师评价
+activate EvaluationMapper
+EvaluationMapper -> DB: 查询评价数据
+DB --> EvaluationMapper: 返回评价列表
+EvaluationMapper --> EvaluationController: 返回评价对象
+deactivate EvaluationMapper
+EvaluationController --> Frontend: 返回评价列表
+deactivate EvaluationController
+
+Frontend -> 用户: 展示教师详细信息、论文和评价
+deactivate Frontend
+@enduml

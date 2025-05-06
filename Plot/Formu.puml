@@ -1,0 +1,34 @@
+@startuml 论坛发帖流程
+actor 用户
+participant "前端(Forum.vue)" as Frontend
+participant "ForumPostController" as PostController
+participant "ForumPostMapper" as PostMapper
+database "数据库" as DB
+
+用户 -> Frontend: 填写帖子内容并提交
+activate Frontend
+Frontend -> PostController: POST /forum/posts
+activate PostController
+PostController -> PostController: 设置创建时间和初始值
+PostController -> PostMapper: insert(post)
+activate PostMapper
+PostMapper -> DB: 插入帖子数据
+DB --> PostMapper: 返回插入结果
+PostMapper --> PostController: 返回结果
+deactivate PostMapper
+
+alt 是回复帖子
+    PostController -> PostMapper: incrementReplyCount(parentId)
+    activate PostMapper
+    PostMapper -> DB: 更新父帖子回复数
+    DB --> PostMapper: 返回更新结果
+    PostMapper --> PostController: 返回结果
+    deactivate PostMapper
+end
+
+PostController --> Frontend: 返回成功结果
+Frontend -> 用户: 显示发帖成功消息
+Frontend -> Frontend: 刷新帖子列表
+deactivate PostController
+deactivate Frontend
+@enduml
