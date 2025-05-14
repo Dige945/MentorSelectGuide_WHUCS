@@ -14,6 +14,7 @@ import About from '../views/About.vue'
 import store from '../store'
 import ForumView from '../views/Forum.vue'
 import DataView from '../views/DataView.vue'
+import PersonImage  from '../views/PersonImage.vue';
 import { ElMessage } from 'element-plus'
 
 const routes = [
@@ -114,13 +115,21 @@ const routes = [
       title: '关于我们'
     }
   },
-
   {
     path: '/profile',
     name: 'Profile',
     component: Profile,
     meta: {
       title: '个人信息',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/personimage',
+    name: 'PersonImage',
+    component: PersonImage,
+    meta: {
+      title: '个人画像',
       requiresAuth: true
     }
   },
