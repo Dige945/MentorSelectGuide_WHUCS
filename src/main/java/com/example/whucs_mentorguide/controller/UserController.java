@@ -154,4 +154,27 @@ public class UserController {
         user.setPassword(null);
         return Result.success(user);
     }
+
+    @ResponseBody
+    @PostMapping("/updatePersonImage")
+    public Result<?> updatePersonImage(@RequestBody User user) {
+        if (user.getId() == null) {
+            return Result.error("-1", "用户ID不能为空");
+        }
+        
+        User existingUser = userMapper.selectById(user.getId());
+        if (existingUser == null) {
+            return Result.error("-1", "用户不存在");
+        }
+
+        // 更新个人画像
+        existingUser.setPersonImage(user.getPersonImage());
+        
+        int result = userMapper.updateById(existingUser);
+        if (result > 0) {
+            return Result.success();
+        } else {
+            return Result.error("-1", "更新失败");
+        }
+    }
 }

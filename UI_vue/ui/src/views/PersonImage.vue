@@ -54,10 +54,15 @@
         v-model="userProfile" 
         placeholder="在这里编辑您的个人简介..." 
         class="profile-textarea"
-      ></textarea>
-      <button class="generate-button" @click="generateAIProfile">
-        <el-icon><Magic /></el-icon>
-        AI生成简介
+      ></textarea>      <button 
+        class="generate-button" 
+        @click="generateAIProfile" 
+        :disabled="isGenerating"
+      >
+        <el-icon class="generate-icon" :class="{ 'is-spinning': isGenerating }">
+          <Magic />
+        </el-icon>
+        {{ isGenerating ? 'AI生成中...' : 'AI生成简介' }}
       </button>
     </div>
     
@@ -74,26 +79,38 @@
           <span class="remove-tag" @click="toggleSubtag(tag.id)">×</span>
         </div>
       </div>
-    </div>
-    
-    <!-- Save button -->
-    <button class="save-button">保存个人设置</button>
+    </div>    <!-- Save button -->
+    <el-button 
+      type="primary" 
+      class="save-button" 
+      size="large"
+      @click.stop="saveProfile"
+      :disabled="!userProfile"
+    >
+      <template #icon>
+        <el-icon><Check /></el-icon>
+      </template>
+      保存个人设置
+    </el-button>
   </div>
 </template>
 
 <script>
-import { User, Collection, School, Monitor, Briefcase, Cpu, Avatar, Magic } from '@element-plus/icons-vue'
+import { User, Collection, School, Monitor, Briefcase, Cpu, Avatar, Magic, Check } from '@element-plus/icons-vue'
+import request from '../utils/request'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'PersonImage',
   components: {
     User, Collection, School, Monitor, Briefcase, Cpu, Avatar, Magic
-  },
-  data() {
+  },  data() {
     return {
       userAvatar: null,
       userProfile: '',
       activeCategoryId: null,
+      userId: null, // 添加用户ID字段
+      isGenerating: false, // AI生成中的状态
       categories: [
         { 
           id: 'research', 
@@ -168,6 +185,10 @@ export default {
       ]
     }
   },
+  mounted() {
+    // 获取当前用户信息
+    this.getCurrentUser()
+  },
   computed: {
     visibleSubtags() {
       if (!this.activeCategoryId) return [];
@@ -186,7 +207,63 @@ export default {
       return selected;
     }
   },
-  methods: {
+  methods: {    async getCurrentUser() {
+      try {
+        // 从 store 中获取用户信息
+        const token = localStorage.getItem('token')
+        if (!token) {
+          this.$router.push('/login')
+          throw new Error('请先登录')
+        }
+
+        const user = this.$store.state.user
+        if (user && user.id) {
+          this.userId = user.id
+          this.userProfile = user.personImage || ''
+          return
+        }
+
+        const res = await request.get('/user/info')
+        if (res.code === '0' && res.data) {
+          this.userId = res.data.id
+          this.userProfile = res.data.personImage || ''
+          // 更新vuex中的用户信息
+          this.$store.commit('SET_USER', res.data)
+        } else {
+          throw new Error(res.msg || '获取用户信息失败')
+        }
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+        ElMessage.error(error.message || '获取用户信息失败')
+        // 跳转到登录页
+        if (!this.userId) {
+          this.$router.push('/login')
+        }
+      }
+    },async saveProfile() {
+      if (!this.userId) {
+        ElMessage.warning('请先登录')
+        return
+      }
+      try {
+        const res = await request.post('/user/updatePersonImage', {
+          id: this.userId,
+          personImage: this.userProfile
+        })
+        if (res.code === '0') {
+          ElMessage.success('保存成功')
+          // 更新本地存储的用户信息
+          const userInfo = JSON.parse(localStorage.getItem('user') || '{}')
+          userInfo.personImage = this.userProfile
+          localStorage.setItem('user', JSON.stringify(userInfo))
+        } else {
+          throw new Error(res.msg || '保存失败')
+        }
+      } catch (error) {
+        console.error('保存失败:', error)
+        ElMessage.error(error.message || '保存失败，请稍后重试')
+      }
+    },
     toggleCategory(categoryId) {
       // If clicking the same category, close it
       if (this.activeCategoryId === categoryId) {
@@ -248,15 +325,26 @@ export default {
         left: `calc(50% + ${x}px)`,
         transform: 'translate(-50%, -50%)'
       };
-    },
-    generateAIProfile() {
-      // Simulating AI generation
+    },    async generateAIProfile() {
       const selectedTagNames = this.selectedTags.map(tag => tag.name).join('、');
       
       if (selectedTagNames) {
-        this.userProfile = `我是一名对${selectedTagNames}等领域感兴趣的计算机科学学生。我期待能在这些方向上深入学习和研究，寻找能够指导我发挥潜力的导师和实验室环境。`;
+        this.isGenerating = true;
+        const tempProfile = this.userProfile; // 保存当前简介以备恢复
+        this.userProfile = "AI正在生成中...";
+        
+        try {
+          // 模拟AI生成过程
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          this.userProfile = `我是一名对${selectedTagNames}等领域感兴趣的计算机科学学生。我期待能在这些方向上深入学习和研究，寻找能够指导我发挥潜力的导师和实验室环境。`;
+        } catch (error) {
+          this.userProfile = tempProfile; // 出错时恢复原简介
+          ElMessage.error('生成失败，请重试');
+        } finally {
+          this.isGenerating = false;
+        }
       } else {
-        this.userProfile = "请至少选择一个标签，AI将根据您的选择生成个人简介。";
+        ElMessage.warning('请至少选择一个标签，AI将根据您的选择生成个人简介');
       }
     }
   }
@@ -508,10 +596,29 @@ export default {
   transition: all 0.3s ease;
 }
 
-.generate-button:hover {
+.generate-button:not(:disabled):hover {
   background: linear-gradient(135deg, #3182ce, #2c5282);
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(49, 130, 206, 0.3);
+}
+
+.generate-button:disabled {
+  background: linear-gradient(135deg, #90cdf4, #63b3ed);
+  cursor: not-allowed;
+  opacity: 0.8;
+  transform: none;
+}
+
+.generate-icon {
+  transition: transform 0.3s ease;
+}
+
+.generate-icon.is-spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .selected-tags-section {
@@ -560,20 +667,44 @@ export default {
   color: white;
   border: none;
   border-radius: 30px;
-  padding: 12px 40px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: 1px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 15px rgba(0, 179, 255, 0.3);
   margin-bottom: 40px;
+  padding: 12px 40px;
+  height: auto;
+  min-width: 200px;
+  font-size: 1rem;
+  font-weight: 600;
+  z-index: 100;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 0 15px rgba(0, 179, 255, 0.3);
 }
 
-.save-button:hover {
-  background: linear-gradient(135deg, #0072ff, #00c6ff);
+.save-button:not(:disabled):hover,
+.save-button:not(:disabled):focus {
   transform: translateY(-3px);
+  background: linear-gradient(135deg, #0072ff, #00c6ff);
   box-shadow: 0 10px 20px rgba(0, 179, 255, 0.4);
+}
+
+.save-button:disabled {
+  background: #a0cfff;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.save-button :deep(.el-icon) {
+  font-size: 1.2rem;
+  margin: 0;
+  transition: transform 0.3s ease;
+}
+
+.save-button:not(:disabled):hover :deep(.el-icon) {
+  transform: scale(1.1);
 }
 
 /* Responsive styles */

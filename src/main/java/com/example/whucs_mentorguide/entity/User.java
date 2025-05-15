@@ -43,6 +43,9 @@ public class User {
     @TableField("avatar")
     private String avatar;
 
+    @TableField("personimage")
+    private String personImage;
+
     public String getPassword() {
         return password;
     }
@@ -121,5 +124,13 @@ public class User {
 
     public void setAvatar(String avatar) {
         this.avatar = avatar;
+    }
+
+    public String getPersonImage() {
+        return personImage;
+    }
+
+    public void setPersonImage(String personImage) {
+        this.personImage = personImage;
     }
 }
