@@ -2,7 +2,7 @@
   <div class="cosmic-profile-container">
     <!-- Background effect -->
     <div class="cosmic-particles"></div>
-    
+
     <!-- Orbit container with all the interactive elements -->
     <div class="orbit-container">
       <!-- Center user icon with glowing effect -->
@@ -15,10 +15,10 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Major category tags surrounding the center icon -->
-      <div 
-        v-for="(category, index) in categories" 
+      <div
+        v-for="(category, index) in categories"
         :key="category.id"
         class="category-tag"
         :class="{ 'active': category.active }"
@@ -30,10 +30,10 @@
         </div>
         <span>{{ category.name }}</span>
       </div>
-      
+
       <!-- Sub-tags for each major category -->
-      <div 
-        v-for="subtag in visibleSubtags" 
+      <div
+        v-for="subtag in visibleSubtags"
         :key="subtag.id"
         class="subtag"
         :class="{ 'active': subtag.selected }"
@@ -246,18 +246,42 @@ export default {
         return
       }
       try {
-        const res = await request.post('/user/updatePersonImage', {
-          id: this.userId,
-          personImage: this.userProfile
-        })
+        // 构造带查询参数的 URL
+        const url = new URL('api/user/updatePersonImage', window.location.origin);
+        url.searchParams.append('id', this.userId);
+        url.searchParams.append('personImage', this.userProfile);
+
+        // 发送 POST 请求
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: this.userId,
+            personImage: this.userProfile
+          }),
+        });
+
+        // 处理 HTTP 错误状态（如 404, 500 等）
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP Error: ${response.status} - ${errorText}`);
+        }
+
+        // 解析 JSON 数据
+        const res = await response.json();
+
+        // 处理业务逻辑
         if (res.code === '0') {
-          ElMessage.success('保存成功')
-          // 更新本地存储的用户信息
-          const userInfo = JSON.parse(localStorage.getItem('user') || '{}')
-          userInfo.personImage = this.userProfile
-          localStorage.setItem('user', JSON.stringify(userInfo))
+          ElMessage.success('保存成功');
+
+          // 更新本地存储
+          const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+          userInfo.personImage = this.userProfile;
+          localStorage.setItem('user', JSON.stringify(userInfo));
         } else {
-          throw new Error(res.msg || '保存失败')
+          throw new Error(res.msg || '保存失败');
         }
       } catch (error) {
         console.error('保存失败:', error)
@@ -271,7 +295,7 @@ export default {
       } else {
         this.activeCategoryId = categoryId;
       }
-      
+
       // Update active state for visual effect
       this.categories.forEach(category => {
         category.active = category.id === this.activeCategoryId;
@@ -285,54 +309,81 @@ export default {
           }
         });
       });
-    },
-    positionCategory(index, total) {
+    },    positionCategory(index, total) {
       // Adjusted radius for better spacing
-      const radius = 230; // Distance from center
+      const radius = 200; // Reduced distance from center
       const angle = (index * (2 * Math.PI / total)) - Math.PI/2; // Starting from top
       const x = radius * Math.cos(angle);
       const y = radius * Math.sin(angle);
-      
+
       return {
         top: `calc(50% + ${y}px)`,
         left: `calc(50% + ${x}px)`,
         transform: 'translate(-50%, -50%)'
       };
-    },
-    positionSubtag(subtag) {
+    },positionSubtag(subtag) {
       const category = this.categories.find(c => c.id === subtag.categoryId);
       const categoryIndex = this.categories.findIndex(c => c.id === subtag.categoryId);
       const subtagIndex = category.subtags.findIndex(s => s.id === subtag.id);
-      const totalSubtags = category.subtags.length;
-      
-      // Base position of the category
-      const categoryRadius = 230;
+      const totalSubtags = category.subtags.length;      // Base position of the category
+      const categoryRadius = 200; // Adjusted to match positionCategory
       const categoryAngle = (categoryIndex * (2 * Math.PI / this.categories.length)) - Math.PI/2;
       const categoryX = categoryRadius * Math.cos(categoryAngle);
       const categoryY = categoryRadius * Math.sin(categoryAngle);
-      
-      // Position around the category
-      const subtagRadius = 120;
-      // Distribute subtags in a wider arc
-      const spreadAngle = Math.PI * 0.7;
-      const subtagAngle = categoryAngle + ((subtagIndex - (totalSubtags - 1) / 2) * (spreadAngle / (totalSubtags || 1)));
-      
+
+      // Position around the category - 优化子标签分布
+      const subtagRadius = 120; // Reduced radius to keep tags closer and within bounds
+      // 根据子标签数量动态调整角度范围
+      let spreadAngle;
+      if (totalSubtags <= 3) {
+        spreadAngle = Math.PI * 0.6; // 较少标签时角度范围小一些
+      } else if (totalSubtags <= 6) {
+        spreadAngle = Math.PI * 0.8; // 中等数量标签
+      } else {
+        spreadAngle = Math.PI * 1.0; // 较多标签时角度范围大一些，但不超过π
+      }
+
+      const subtagAngle = categoryAngle + ((subtagIndex - (totalSubtags - 1) / 2) * (spreadAngle / Math.max(totalSubtags - 1, 1)));
+
       const x = categoryX + subtagRadius * Math.cos(subtagAngle);
       const y = categoryY + subtagRadius * Math.sin(subtagAngle);
-      
+
+      // 边界检查和调整 - 确保标签不会超出容器范围
+      const containerWidth = 600;
+      const containerHeight = 600;
+      const tagWidth = 120; // 估算标签宽度
+      const tagHeight = 40; // 估算标签高度
+
+      // 计算相对于容器的绝对位置
+      const absoluteX = containerWidth / 2 + x;
+      const absoluteY = containerHeight / 2 + y;
+
+      // 边界约束
+      const minX = tagWidth / 2 + 10; // 10px 边距
+      const maxX = containerWidth - tagWidth / 2 - 10;
+      const minY = tagHeight / 2 + 10;
+      const maxY = containerHeight - tagHeight / 2 - 10;
+
+      const constrainedX = Math.max(minX, Math.min(maxX, absoluteX));
+      const constrainedY = Math.max(minY, Math.min(maxY, absoluteY));
+
+      // 转换回相对于中心的坐标
+      const finalX = constrainedX - containerWidth / 2;
+      const finalY = constrainedY - containerHeight / 2;
+
       return {
         top: `calc(50% + ${y}px)`,
         left: `calc(50% + ${x}px)`,
         transform: 'translate(-50%, -50%)'
       };
-    },    async generateAIProfile() {
+    },async generateAIProfile() {
       const selectedTagNames = this.selectedTags.map(tag => tag.name).join('、');
-      
+
       if (selectedTagNames) {
         this.isGenerating = true;
         const tempProfile = this.userProfile; // 保存当前简介以备恢复
         this.userProfile = "AI正在生成中...";
-        
+
         try {
           // 模拟AI生成过程
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -353,22 +404,21 @@ export default {
 
 <style scoped>
 .cosmic-profile-container {
-  position: absolute;
+  position: fixed; /* Fixed position to cover entire viewport */
   top: 0;
   left: 0;
-  width: 100%;
-  min-height: 100vh;
+  width: 100vw; /* Full viewport width */
+  height: 100vh; /* Full viewport height */
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
-  overflow: hidden;
-  background-color: #0a0a2a;
-  color: #e0e7ff;
-  font-family: 'BlinkMacSystemFont', 'Segoe UI', Roboto, sans-serif;
-  z-index: 0; /* Keep below the header */
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 30px 30px;
+  padding: 2rem 1rem 1rem 1rem; /* More top padding, less on other sides */
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%); /* Dark gradient background */
+  color: #f7fafc; /* Light text for better contrast */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  z-index: 0;
 }
 
 .cosmic-particles {
@@ -377,7 +427,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: radial-gradient(#2a4b8d 1px, transparent 1px), 
+  background-image: radial-gradient(#2a4b8d 1px, transparent 1px),
                    radial-gradient(#2a4b8d 1px, transparent 1px);
   background-size: 50px 50px;
   background-position: 0 0, 25px 25px;
@@ -395,10 +445,11 @@ export default {
 
 .orbit-container {
   position: relative;
-  width: 700px;
-  height: 700px;
-  margin: 120px auto 150px;
+  width: 600px; /* Reduced width */
+  height: 600px; /* Reduced height */
+  margin: 80px auto 30px; /* Increased top margin to prevent overlap with header */
   pointer-events: none;
+  flex-shrink: 0; /* Prevent the orbit container from shrinking */
 }
 
 .user-icon-container {
@@ -407,6 +458,9 @@ export default {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .user-icon-glow {
@@ -487,15 +541,16 @@ export default {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, background-color 0.3s ease;
   pointer-events: auto;
   z-index: 5;
   box-shadow: 0 0 10px rgba(99, 179, 237, 0.3);
+  margin: 10px; /* 增加标签之间的间隔 */
 }
 
 .category-tag:hover {
-  background: rgba(44, 82, 130, 0.9);
-  transform: translate(-50%, -50%) scale(1.1);
+  transform: scale(1.1); /* 悬停时的缩放效果 */
+  background-color: rgba(44, 82, 130, 0.9); /* 悬停时的背景颜色 */
 }
 
 .category-tag.active {
@@ -525,16 +580,17 @@ export default {
   color: #e0e7ff;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, background-color 0.3s ease;
   pointer-events: auto;
   z-index: 4;
   box-shadow: 0 0 5px rgba(66, 153, 225, 0.2);
   white-space: nowrap;
+  margin: 5px; /* 增加子标签之间的间隔 */
 }
 
 .subtag:hover {
-  background: rgba(44, 82, 130, 0.8);
-  transform: translate(-50%, -50%) scale(1.1);
+  transform: scale(1.1); /* 悬停时的缩放效果 */
+  background-color: rgba(44, 82, 130, 0.8); /* 悬停时的背景颜色 */
 }
 
 .subtag.active {
@@ -547,20 +603,20 @@ export default {
   position: relative;
   width: 100%;
   max-width: 600px;
-  background: rgba(26, 54, 93, 0.7);
-  border: 2px solid #4299e1;
-  border-radius: 10px;
+  background: rgba(26, 54, 93, 0.9); /* 改为深色背景，增加透明度 */
+  border: 2px solid #4299e1; /* 更明显的边框 */
+  border-radius: 10px; /* 圆角 */
   padding: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 15px; /* Reduced margin */
   backdrop-filter: blur(5px);
-  box-shadow: 0 0 20px rgba(66, 153, 225, 0.2);
+  box-shadow: 0 0 20px rgba(66, 153, 225, 0.3);
 }
 
 .ai-header {
   display: flex;
   align-items: center;
   margin-bottom: 15px;
-  color: #90cdf4;
+  color: #e2e8f0; /* 更亮的文字颜色 */
   font-weight: 600;
 }
 
@@ -573,11 +629,11 @@ export default {
   width: 100%;
   min-height: 120px;
   background: rgba(17, 29, 57, 0.7);
-  border: 1px solid #63b3ed;
-  border-radius: 5px;
-  color: #e2e8f0;
-  padding: 15px;
-  font-size: 0.9rem;
+  border: 1px solid #4299e1; /* 更明显的边框颜色 */
+  border-radius: 5px; /* 圆角 */
+  color: #e2e8f0; /* 更亮的文字颜色 */
+  padding: 10px;
+  font-size: 1rem; /* 字体大小 */
   resize: vertical;
   margin-bottom: 15px;
 }
@@ -586,7 +642,7 @@ export default {
   background: linear-gradient(135deg, #4299e1, #3182ce);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 5px; /* 圆角 */
   padding: 10px 15px;
   cursor: pointer;
   font-weight: 600;
@@ -628,7 +684,7 @@ export default {
   border: 2px solid #4299e1;
   border-radius: 10px;
   padding: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 15px; /* Reduced margin */
   backdrop-filter: blur(5px);
 }
 
@@ -651,8 +707,7 @@ export default {
   padding: 5px 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
+  gap: 8px;  font-size: 0.85rem;
 }
 
 .remove-tag {
@@ -663,48 +718,10 @@ export default {
 }
 
 .save-button {
-  background: linear-gradient(135deg, #00b0ff, #0072ff);
-  color: white;
-  border: none;
-  border-radius: 30px;
-  margin-bottom: 40px;
-  padding: 12px 40px;
-  height: auto;
-  min-width: 200px;
-  font-size: 1rem;
-  font-weight: 600;
-  z-index: 100;
-  position: relative;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: 0 0 15px rgba(0, 179, 255, 0.3);
-}
-
-.save-button:not(:disabled):hover,
-.save-button:not(:disabled):focus {
-  transform: translateY(-3px);
-  background: linear-gradient(135deg, #0072ff, #00c6ff);
-  box-shadow: 0 10px 20px rgba(0, 179, 255, 0.4);
-}
-
-.save-button:disabled {
-  background: #a0cfff;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.save-button :deep(.el-icon) {
-  font-size: 1.2rem;
-  margin: 0;
-  transition: transform 0.3s ease;
-}
-
-.save-button:not(:disabled):hover :deep(.el-icon) {
-  transform: scale(1.1);
+  margin-top: 10px; /* Reduced spacing above the save button */
+  margin-bottom: 20px; /* Add bottom margin for padding from edge */
+  min-width: 150px; /* Ensure a decent minimum width */
+  /* Styles for background, color, border, padding, font-size are now primarily handled by Element Plus type="primary" size="large" */
 }
 
 /* Responsive styles */
