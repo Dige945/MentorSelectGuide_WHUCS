@@ -416,18 +416,17 @@ public class OpenAIController {
         }
         
         return result;
-    }
-
-    private String buildSystemPrompt(Map<String, Object> request) {
-        return "你是一个专业的导师推荐系统。请根据用户的选择和偏好，推荐最适合的导师。\n\n" +
+    }    private String buildSystemPrompt(Map<String, Object> request) {
+        return "你是一个专业的导师推荐系统。请根据用户的自我描述、选择的标签和偏好，推荐最适合的导师。\n\n" +
+               "分析用户的自我描述，结合用户的标签选择和偏好，提供更加个性化的推荐。\n\n" +
                "请按照以下格式返回推荐结果：\n\n" +
                "## 推荐导师列表\n\n" +
                "### 1. [导师姓名]\n\n" +
                "- 职称：[职称]\n\n" +
                "- 所属院系：[院系]\n\n" +
                "- 研究方向：[研究方向]\n\n" +
-               "- 推荐理由：[详细推荐理由]\n\n" +
-               "请确保推荐理由具体说明与用户需求的匹配点。每个导师的信息之间请用两个换行符分隔。";
+               "- 推荐理由：[详细推荐理由，包括与用户自我描述的契合点]\n\n" +
+               "请确保推荐理由具体说明与用户需求和用户自我描述的匹配点。每个导师的信息之间请用两个换行符分隔。";
     }
 
     private String buildUserPrompt(Map<String, Object> request) {
@@ -449,6 +448,16 @@ public class OpenAIController {
                 prompt.append("用户偏好：").append(preferences).append("\n\n");
             }
         }
+          // 添加用户画像信息（仅考虑个人描述）
+        if (request.containsKey("userProfile") && request.get("userProfile") instanceof Map) {
+            Map<String, Object> userProfile = (Map<String, Object>) request.get("userProfile");
+            if (!userProfile.isEmpty() && userProfile.containsKey("personImage") && userProfile.get("personImage") != null) {
+                String personImage = userProfile.get("personImage").toString();
+                if (!personImage.isEmpty()) {
+                    prompt.append("用户自我描述：").append(personImage).append("\n\n");
+                }
+            }
+        }
 
         // 添加教师信息
         if (request.containsKey("teachers") && request.get("teachers") instanceof List) {
@@ -462,7 +471,7 @@ public class OpenAIController {
             }
         }
 
-        prompt.append("请根据以上信息，推荐最适合的导师，并说明推荐理由。");
+        prompt.append("请根据以上信息，特别是用户画像和用户偏好，推荐最适合的导师，并说明推荐理由。");
         return prompt.toString();
     }
 

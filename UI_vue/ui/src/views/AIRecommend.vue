@@ -22,15 +22,16 @@ export default {
       userInput: '',
       isLoading: false,
       recommendation: '',
-      teachers: []
+      teachers: [],
+      userProfile: null, // 添加用户画像状态
+      userId: null // 添加用户ID状态
     }
   },
   computed: {
     canSubmit() {
       return this.selectedTags.length > 0 || this.userInput.trim() !== ''
     }
-  },
-  methods: {
+  },  methods: {
     loadTeachers() {
       try {
         console.log('开始加载教师数据...')
@@ -154,9 +155,7 @@ export default {
         // 确保教师数据已加载
         if (this.teachers.length === 0) {
           await this.loadTeachers();
-        }
-
-        // 构建请求数据
+        }        // 构建请求数据
         const requestData = {
           tags: this.selectedTags.map(tag => this.getTagLabel(tag)),
           preferences: this.userInput.trim(),
@@ -170,6 +169,12 @@ export default {
             rank: teacher.rank
           }))
         };
+          // 添加用户画像数据（仅个人描述）
+        if (this.userProfile && this.userProfile.personImage) {
+          requestData.userProfile = {
+            personImage: this.userProfile.personImage // 仅添加用户个人描述
+          };
+        }
 
         console.log('发送到DeepSeek的请求数据:', requestData);
 
@@ -314,10 +319,36 @@ export default {
           this.recommendation += `   个人主页：${teacher.profile_url || '无'}\n\n`
         })
       }
-    },
-  },
-  created() {
+    },    fetchUserProfile() {
+      // 从本地存储中获取用户信息（包括token和用户ID）
+      const userJson = localStorage.getItem('user')
+      if (!userJson) {
+        console.warn('用户未登录，无法获取用户画像')
+        return
+      }
+      
+      try {
+        const user = JSON.parse(userJson)
+        this.userId = user.id
+        
+        // 使用用户ID获取详细信息
+        request.get(`user/${user.id}`).then(response => {
+          if (response.code === 200) {
+            this.userProfile = response.data
+            console.log('成功获取用户画像:', this.userProfile)
+          } else {
+            console.warn('获取用户信息失败:', response.msg)
+          }
+        }).catch(error => {
+          console.error('获取用户信息时发生错误:', error)
+        })
+      } catch (error) {
+        console.error('解析用户信息失败:', error)
+      }
+    }
+  },  created() {
     this.loadTeachers()
+    this.fetchUserProfile() // 组件创建时获取用户信息
   },
   beforeUnmount() {
     // 组件卸载前的清理工作
