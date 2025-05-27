@@ -2,6 +2,8 @@
 
 这是一个基于 Vue 3 和 Spring Boot 开发的基于大模型AI Agent的导师智能推荐系统，旨在为学生科研之路提供智能化指南。
 
+## 网站
+http://whucsmentorguide.asia/ 欢迎访问
 ## 项目特点
 
 - 基于 DeepSeek API 的智能推荐系统
