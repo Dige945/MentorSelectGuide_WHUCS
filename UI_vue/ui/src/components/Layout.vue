@@ -157,10 +157,16 @@ export default {
     activeMenu() {
       return this.$route.path
     }
-  },
-  created() {
+  },  created() {
     // 组件创建时检查登录状态
-    this.$store.dispatch('checkLogin')
+    this.$store.dispatch('checkLogin').then(isLoggedIn => {
+      console.log('用户登录状态检查完成，已登录:', isLoggedIn)
+      if (isLoggedIn) {
+        console.log('当前用户信息:', this.$store.state.user)
+      }
+    }).catch(err => {
+      console.error('登录状态检查失败:', err)
+    })
   },
   methods: {
     handleLogin() {

@@ -108,9 +108,7 @@ export default {
       confirmPassword: [
         { validator: validatePass2, trigger: 'blur' }
       ]
-    }
-
-    // 获取用户信息
+    }    // 获取用户信息
     const fetchUserInfo = async () => {
       try {
         // 从 store 中获取当前用户信息
@@ -121,21 +119,28 @@ export default {
           return
         }
 
-        const res = await request.get('/user/info', {
-          headers: {
-            'Authorization': currentUser.username
-          }
-        })
+        // 直接从 store 中获取用户信息，然后尝试刷新
+        userInfo.username = currentUser.username
+        userInfo.email = currentUser.email || ''
+        userInfo.newPassword = ''
+        userInfo.confirmPassword = ''
 
-        if (res.code === '0') {
+        // 尝试从服务器获取最新的用户信息
+        const res = await request.get('/user/info')
+        
+        if (res.code === '0' || res.code === 200) {
           const userData = res.data
           userInfo.username = userData.username
           userInfo.email = userData.email || ''
           // 清空密码字段
           userInfo.newPassword = ''
           userInfo.confirmPassword = ''
+          
+          // 更新 store 和 localStorage 中的用户信息
+          store.commit('SET_USER', userData)
+          localStorage.setItem('user', JSON.stringify(userData))
         } else {
-          ElMessage.error(res.msg || '获取用户信息失败')
+          console.warn('获取用户信息响应异常:', res)
         }
       } catch (error) {
         console.error('获取用户信息失败:', error)
@@ -143,12 +148,10 @@ export default {
           ElMessage.error('未登录或登录已过期')
           router.push('/login')
         } else {
-          ElMessage.error('获取用户信息失败：' + (error.response?.data?.msg || error.message))
+          console.error('获取用户信息详细错误:', error)
         }
       }
-    }
-
-    // 提交修改
+    }    // 提交修改
     const handleSubmit = async () => {
       if (!formRef.value) return
       
@@ -170,19 +173,22 @@ export default {
           password: userInfo.newPassword || undefined // 只在有新密码时更新
         }
 
-        const res = await request.post('/user/update', updateData, {
-          headers: {
-            'Authorization': currentUser.username
-          }
-        })
+        const res = await request.post('/user/update', updateData)
 
-        if (res.code === '0') {
+        if (res.code === '0' || res.code === 200) {
           ElMessage.success('个人信息更新成功')
           // 清空密码字段
           userInfo.newPassword = ''
           userInfo.confirmPassword = ''
-          // 更新 store 中的用户信息
-          store.dispatch('updateUserInfo', res.data)
+          
+          // 如果返回了用户数据，更新 store 中的用户信息
+          if (res.data) {
+            store.commit('SET_USER', res.data)
+            localStorage.setItem('user', JSON.stringify(res.data))
+          } else {
+            // 如果没有返回用户数据，重新获取用户信息
+            fetchUserInfo()
+          }
         } else {
           ElMessage.error(res.msg || '更新失败')
         }

@@ -4,6 +4,7 @@ import axios from 'axios'
 const request = axios.create({
     baseURL: '/api',  // 注意！！ 这里是全局统一加上了 '/api' 前缀，也就是说所有接口都会加上'/api'前缀在，页面里面写接口的时候就不要加 '/api'了，否则会出现2个'/api'，类似 '/api/api/user'这样的报错，切记！！！
     timeout: 5000,
+
     // headers: {
     //     'Content-Type': 'application/json' // 设置请求头
     // }
@@ -14,14 +15,19 @@ const request = axios.create({
 // 比如统一加token，对请求参数统一加密
 request.interceptors.request.use(config => {
     config.headers['Content-Type'] = 'application/json;charset=utf-8';
-
-    // config.headers['token'] = user.token;  // 设置请求头
-
-    //取出sessionStorage里面缓存的用户信息
-    // let userJson = sessionStorage.getItem('user');  //没有登录的话直接跳到登录页面
-    // if(!userJson){
-    //     router.push('/login');
-    // }
+    
+    // 从 localStorage 获取 user 对象并添加到请求头
+    const userJson = localStorage.getItem('user')
+    if (userJson) {
+        try {
+            const user = JSON.parse(userJson)
+            if (user && user.username) {
+                config.headers['Authorization'] = user.username
+            }
+        } catch (e) {
+            console.error('解析 user JSON 失败:', e)
+        }
+    }
 
     return config
 }, error => {

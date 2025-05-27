@@ -23,10 +23,13 @@ export default createStore({
     async login({ commit }, userInfo) {
       try {
         const res = await request.post('/user/login', userInfo)
-        if (res.code === '0') {
+        if (res.code === '0' || res.code === 200) {
+          // 设置用户信息到 store
           commit('SET_USER', res.data)
-          commit('SET_TOKEN', res.data.token)
-          localStorage.setItem('token', res.data.token)
+          
+          // 将用户信息保存到 localStorage
+          localStorage.setItem('user', JSON.stringify(res.data))
+          
           return true
         }
         return false
@@ -37,7 +40,7 @@ export default createStore({
     },
     logout({ commit }) {
       commit('CLEAR_USER')
-      localStorage.removeItem('token')
+      localStorage.removeItem('user')
     },
     async checkLogin({ commit, state }) {
       if (state.user) {
@@ -45,19 +48,36 @@ export default createStore({
         return true
       }
       
-      const token = localStorage.getItem('token')
-      if (token) {
+      // 从 localStorage 获取用户信息
+      const userJson = localStorage.getItem('user')
+      if (userJson) {
         try {
-          const res = await request.get('/user/info')
-          if (res.code === '0') {
-            console.log('User info from server:', res.data)
-            commit('SET_USER', res.data)
-            commit('SET_TOKEN', token)
+          // 解析存储的用户信息
+          const userFromStorage = JSON.parse(userJson)
+          if (userFromStorage && userFromStorage.username) {
+            console.log('User info from local storage:', userFromStorage)
+            
+            // 使用本地存储的用户信息先恢复state，然后再尝试从服务器刷新
+            commit('SET_USER', userFromStorage)
+            
+            try {
+              // 尝试从服务器获取最新的用户信息
+              const res = await request.get('/user/info')
+              if (res.code === '0' || res.code === 200) {
+                console.log('User info from server:', res.data)
+                commit('SET_USER', res.data)
+                // 更新本地存储
+                localStorage.setItem('user', JSON.stringify(res.data))
+              }
+            } catch (serverError) {
+              console.warn('获取服务器用户信息失败，使用本地缓存:', serverError)
+            }
+            
             return true
           }
-        } catch (error) {
-          console.error('获取用户信息失败:', error)
-          localStorage.removeItem('token')
+        } catch (parseError) {
+          console.error('解析本地用户信息失败:', parseError)
+          localStorage.removeItem('user')
         }
       }
       return false
